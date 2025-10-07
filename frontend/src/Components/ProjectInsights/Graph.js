@@ -1,0 +1,196 @@
+import { useState } from "react";
+import { Icon } from "@iconify/react";
+import { Modalpopup } from "../../CommonComponents/Modalpopup";
+import { WidgetDetails } from "../../CommonComponents/WidgetDetails";
+
+const widgetData = [
+  {
+    title: "Active Test Runs",
+    desc: "Shows status of test cases in active runs",
+    img: "data:image/svg+xml,%3csvg%20width='348'%20height='177'%20viewBox='0%200%20348%20177'%20fill='none'%20xmlns='http://www.w3.org/2000/svg'%3e%3cg%20clip-path='url(%23clip0_88_2777)'%3e%3crect%20width='348'%20height='177'%20fill='white'/%3e%3cg%20filter='url(%23filter0_d_88_2777)'%3e%3cellipse%20cx='345.774'%20cy='142.039'%20rx='1.96077'%20ry='1.96077'%20fill='white'/%3e%3c/g%3e%3cmask%20id='path-2-inside-1_88_2777'%20fill='white'%3e%3cpath%20d='M241%2088.5C241%20125.779%20210.779%20156%20173.5%20156C136.221%20156%20106%20125.779%20106%2088.5C106%2051.2208%20136.221%2021%20173.5%2021C210.779%2021%20241%2051.2208%20241%2088.5ZM118.063%2088.5C118.063%20119.117%20142.883%20143.938%20173.5%20143.938C204.117%20143.938%20228.938%20119.117%20228.938%2088.5C228.938%2057.8827%20204.117%2033.0625%20173.5%2033.0625C142.883%2033.0625%20118.063%2057.8827%20118.063%2088.5Z'/%3e%3c/mask%3e%3cpath%20d='M241%2088.5C241%20125.779%20210.779%20156%20173.5%20156C136.221%20156%20106%20125.779%20106%2088.5C106%2051.2208%20136.221%2021%20173.5%2021C210.779%2021%20241%2051.2208%20241%2088.5ZM118.063%2088.5C118.063%20119.117%20142.883%20143.938%20173.5%20143.938C204.117%20143.938%20228.938%20119.117%20228.938%2088.5C228.938%2057.8827%20204.117%2033.0625%20173.5%2033.0625C142.883%2033.0625%20118.063%2057.8827%20118.063%2088.5Z'%20fill='%23E5E7EB'%20stroke='white'%20stroke-width='0.964286'%20mask='url(%23path-2-inside-1_88_2777)'/%3e%3cmask%20id='path-3-inside-2_88_2777'%20fill='white'%3e%3cpath%20d='M106%2088.5C106%20102.158%20110.143%20115.495%20117.883%20126.749C125.622%20138.002%20136.593%20146.644%20149.347%20151.531C162.101%20156.418%20176.037%20157.321%20189.315%20154.121C202.593%20150.921%20214.588%20143.768%20223.715%20133.608C232.842%20123.447%20238.672%20110.757%20240.435%2097.2129C242.198%2083.669%20239.811%2069.909%20233.589%2057.7504C227.367%2045.5918%20217.603%2035.6067%20205.587%2029.1142C193.571%2022.6216%20179.868%2019.9271%20166.288%2021.3864L167.576%2033.3799C178.73%2032.1813%20189.984%2034.3943%20199.853%2039.7266C209.722%2045.0589%20217.741%2053.2596%20222.851%2063.2454C227.961%2073.2312%20229.922%2084.5323%20228.474%2095.6558C227.026%20106.779%20222.238%20117.202%20214.741%20125.547C207.245%20133.892%20197.394%20139.766%20186.489%20142.394C175.584%20145.023%20164.138%20144.281%20153.663%20140.267C143.189%20136.253%20134.178%20129.156%20127.822%20119.913C121.465%20110.671%20118.063%2099.7173%20118.063%2088.5H106Z'/%3e%3c/mask%3e%3cpath%20d='M106%2088.5C106%20102.158%20110.143%20115.495%20117.883%20126.749C125.622%20138.002%20136.593%20146.644%20149.347%20151.531C162.101%20156.418%20176.037%20157.321%20189.315%20154.121C202.593%20150.921%20214.588%20143.768%20223.715%20133.608C232.842%20123.447%20238.672%20110.757%20240.435%2097.2129C242.198%2083.669%20239.811%2069.909%20233.589%2057.7504C227.367%2045.5918%20217.603%2035.6067%20205.587%2029.1142C193.571%2022.6216%20179.868%2019.9271%20166.288%2021.3864L167.576%2033.3799C178.73%2032.1813%20189.984%2034.3943%20199.853%2039.7266C209.722%2045.0589%20217.741%2053.2596%20222.851%2063.2454C227.961%2073.2312%20229.922%2084.5323%20228.474%2095.6558C227.026%20106.779%20222.238%20117.202%20214.741%20125.547C207.245%20133.892%20197.394%20139.766%20186.489%20142.394C175.584%20145.023%20164.138%20144.281%20153.663%20140.267C143.189%20136.253%20134.178%20129.156%20127.822%20119.913C121.465%20110.671%20118.063%2099.7173%20118.063%2088.5H106Z'%20fill='%23F87171'%20stroke='white'%20stroke-width='0.964286'%20mask='url(%23path-3-inside-2_88_2777)'/%3e%3cmask%20id='path-4-inside-3_88_2777'%20fill='white'%3e%3cpath%20d='M106%2088.5C106%20100.518%20109.209%20112.318%20115.295%20122.682C121.38%20133.045%20130.123%20141.595%20140.619%20147.45C151.114%20153.304%20162.983%20156.25%20174.998%20155.983C187.013%20155.717%20198.739%20152.247%20208.965%20145.932C219.191%20139.618%20227.545%20130.688%20233.165%20120.065C238.785%20109.442%20241.467%2097.5109%20240.934%2085.5046C240.4%2073.4983%20236.671%2061.8521%20230.131%2051.7692C223.591%2041.6862%20214.478%2033.5321%20203.733%2028.1492L198.33%2038.9341C207.155%2043.3551%20214.64%2050.052%20220.011%2058.3331C225.382%2066.6142%20228.445%2076.1792%20228.883%2086.0399C229.321%2095.9006%20227.118%20105.699%20222.503%20114.424C217.887%20123.149%20211.025%20130.483%20202.627%20135.669C194.229%20140.855%20184.598%20143.705%20174.73%20143.924C164.862%20144.143%20155.115%20141.723%20146.495%20136.915C137.875%20132.107%20130.694%20125.084%20125.696%20116.573C120.698%20108.062%20118.063%2098.3704%20118.063%2088.5H106Z'/%3e%3c/mask%3e%3cpath%20d='M106%2088.5C106%20100.518%20109.209%20112.318%20115.295%20122.682C121.38%20133.045%20130.123%20141.595%20140.619%20147.45C151.114%20153.304%20162.983%20156.25%20174.998%20155.983C187.013%20155.717%20198.739%20152.247%20208.965%20145.932C219.191%20139.618%20227.545%20130.688%20233.165%20120.065C238.785%20109.442%20241.467%2097.5109%20240.934%2085.5046C240.4%2073.4983%20236.671%2061.8521%20230.131%2051.7692C223.591%2041.6862%20214.478%2033.5321%20203.733%2028.1492L198.33%2038.9341C207.155%2043.3551%20214.64%2050.052%20220.011%2058.3331C225.382%2066.6142%20228.445%2076.1792%20228.883%2086.0399C229.321%2095.9006%20227.118%20105.699%20222.503%20114.424C217.887%20123.149%20211.025%20130.483%20202.627%20135.669C194.229%20140.855%20184.598%20143.705%20174.73%20143.924C164.862%20144.143%20155.115%20141.723%20146.495%20136.915C137.875%20132.107%20130.694%20125.084%20125.696%20116.573C120.698%20108.062%20118.063%2098.3704%20118.063%2088.5H106Z'%20fill='%2334D399'%20stroke='white'%20stroke-width='0.964286'%20mask='url(%23path-4-inside-3_88_2777)'/%3e%3crect%20x='142'%20y='64'%20width='64.7319'%20height='6.29817'%20rx='3.14908'%20fill='%23E5E7EB'/%3e%3crect%20x='143.295'%20y='78.1719'%20width='18.1249'%20height='31.4908'%20rx='1.32852'%20fill='%23E5E7EB'/%3e%3crect%20x='165.302'%20y='78.1719'%20width='18.1249'%20height='31.4908'%20rx='1.32852'%20fill='%23E5E7EB'/%3e%3crect%20x='187.312'%20y='78.1719'%20width='18.1249'%20height='31.4908'%20rx='1.32852'%20fill='%23E5E7EB'/%3e%3c/g%3e%3cdefs%3e%3cfilter%20id='filter0_d_88_2777'%20x='331.848'%20y='132.336'%20width='25.0376'%20height='25.0374'%20filterUnits='userSpaceOnUse'%20color-interpolation-filters='sRGB'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeColorMatrix%20in='SourceAlpha'%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%20127%200'%20result='hardAlpha'/%3e%3cfeOffset%20dx='-1.40773'%20dy='2.81547'/%3e%3cfeGaussianBlur%20stdDeviation='5.279'/%3e%3cfeComposite%20in2='hardAlpha'%20operator='out'/%3e%3cfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200.12%200'/%3e%3cfeBlend%20mode='normal'%20in2='BackgroundImageFix'%20result='effect1_dropShadow_88_2777'/%3e%3cfeBlend%20mode='normal'%20in='SourceGraphic'%20in2='effect1_dropShadow_88_2777'%20result='shape'/%3e%3c/filter%3e%3cclipPath%20id='clip0_88_2777'%3e%3crect%20width='348'%20height='177'%20fill='white'/%3e%3c/clipPath%3e%3c/defs%3e%3c/svg%3e",
+  },
+  {
+    title: "Closed Test Runs",
+    desc: "Shows count of test runs closed over time",
+    img: "data:image/svg+xml,%3csvg%20width='348'%20height='177'%20viewBox='0%200%20348%20177'%20fill='none'%20xmlns='http://www.w3.org/2000/svg'%3e%3cg%20clip-path='url(%23clip0_8176_68126)'%3e%3crect%20width='348'%20height='177'%20fill='white'/%3e%3cg%20filter='url(%23filter0_d_8176_68126)'%3e%3cellipse%20cx='345.774'%20cy='142.039'%20rx='1.96077'%20ry='1.96077'%20fill='%23FEFEFE'/%3e%3c/g%3e%3cpath%20d='M319%2028L29%2028.0002'%20stroke='%23E5E7EB'/%3e%3cpath%20d='M319%2052.0002L29%2052.0005'%20stroke='%23E5E7EB'/%3e%3cpath%20d='M319%2076.0004L29%2076.0007'%20stroke='%23E5E7EB'/%3e%3cpath%20d='M319%20100.001L29%20100.001'%20stroke='%23E5E7EB'/%3e%3cpath%20d='M319%20124.001L29%20124.001'%20stroke='%23E5E7EB'/%3e%3cpath%20d='M319%20148.001L29%20148.001'%20stroke='%23E5E7EB'/%3e%3cpath%20d='M30%20102.426H57.5723C62.545%20102.426%2066.5762%20106.458%2066.5762%20111.43V111.43C66.5762%20117.268%2071.3084%20122%2077.1459%20122H92.0702C95.9107%20122%2099.4197%20119.824%20101.127%20116.384L118.471%2081.4426C121.174%2075.9958%20126.73%2072.5509%20132.811%2072.5509H150.305C154.629%2072.5509%20158.475%2069.801%20159.873%2065.709L169.107%2038.6856C170.677%2034.089%20174.997%2031%20179.855%2031V31C184.77%2031%20189.127%2034.1618%20190.652%2038.8347L200.024%2067.5572C201.665%2072.5838%20206.352%2075.9849%20211.639%2075.9849H214.041C220.285%2075.9849%20226.017%2079.4375%20228.937%2084.957L240.109%20106.077C241.715%20109.112%20244.868%20111.011%20248.302%20111.011H248.869C254.261%20111.011%20259.059%20107.591%20260.817%20102.493L270.101%2075.5747C271.859%2070.4773%20276.658%2067.0566%20282.05%2067.0566H319'%20stroke='%234580DA'%20stroke-width='2'%20stroke-miterlimit='1'/%3e%3c/g%3e%3cdefs%3e%3cfilter%20id='filter0_d_8176_68126'%20x='331.848'%20y='132.336'%20width='25.0374'%20height='25.0376'%20filterUnits='userSpaceOnUse'%20color-interpolation-filters='sRGB'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeColorMatrix%20in='SourceAlpha'%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%20127%200'%20result='hardAlpha'/%3e%3cfeOffset%20dx='-1.40773'%20dy='2.81547'/%3e%3cfeGaussianBlur%20stdDeviation='5.279'/%3e%3cfeComposite%20in2='hardAlpha'%20operator='out'/%3e%3cfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200.12%200'/%3e%3cfeBlend%20mode='normal'%20in2='BackgroundImageFix'%20result='effect1_dropShadow_8176_68126'/%3e%3cfeBlend%20mode='normal'%20in='SourceGraphic'%20in2='effect1_dropShadow_8176_68126'%20result='shape'/%3e%3c/filter%3e%3cclipPath%20id='clip0_8176_68126'%3e%3crect%20width='348'%20height='177'%20fill='white'/%3e%3c/clipPath%3e%3c/defs%3e%3c/svg%3e",
+  },
+  {
+    title: "Results from Closed Test Runs",
+    desc: "Shows distribution of test case results across closed test runs",
+    img: "data:image/svg+xml,%3csvg%20width='187'%20height='74'%20viewBox='0%200%20187%2074'%20fill='none'%20xmlns='http://www.w3.org/2000/svg'%3e%3crect%20x='0.682129'%20y='73.9785'%20width='19.0436'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%200.682129%2073.9785)'%20fill='%23A7F3D0'/%3e%3cpath%20d='M0.682129%2061.0293L0.682127%2019.5613C0.682127%2018.0629%201.89682%2016.8482%203.39521%2016.8482C4.88511%2016.8482%206.0929%2018.056%206.0929%2019.5459L6.09291%2061.0293L0.682129%2061.0293Z'%20fill='%23FCA5A5'/%3e%3cpath%20d='M0.682129%2024.4648L0.682128%2010.4119C0.682128%208.91775%201.89337%207.7065%203.38752%207.7065C4.88166%207.7065%206.09291%208.91774%206.09291%2010.4119L6.09291%2024.4648L0.682129%2024.4648Z'%20fill='%23D1DAE3'/%3e%3crect%20x='17.0928'%20y='73.9785'%20width='19.0436'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%2017.0928%2073.9785)'%20fill='%23A7F3D0'/%3e%3cpath%20d='M17.0928%2065.5996L17.0928%2024.1316C17.0928%2022.6332%2018.3075%2021.4185%2019.8059%2021.4185C21.2958%2021.4185%2022.5035%2022.6263%2022.5035%2024.1162L22.5036%2065.5996L17.0928%2065.5996Z'%20fill='%23A7F3D0'/%3e%3crect%20x='33.5039'%20y='73.9785'%20width='28.3337'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%2033.5039%2073.9785)'%20fill='%23D1DAE3'/%3e%3cpath%20d='M33.5039%2061.5117L33.5039%2042.6912C33.5039%2041.1928%2034.7186%2039.9781%2036.217%2039.9781C37.7069%2039.9781%2038.9147%2041.1859%2038.9147%2042.6758L38.9147%2061.5117L33.5039%2061.5117Z'%20fill='%23FCA5A5'/%3e%3crect%20x='49.9146'%20y='73.9785'%20width='19.0436'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%2049.9146%2073.9785)'%20fill='%23A7F3D0'/%3e%3cpath%20d='M49.9146%2068.6465L49.9145%2027.1785C49.9145%2025.6801%2051.1292%2024.4654%2052.6276%2024.4654C54.1175%2024.4654%2055.3253%2025.6732%2055.3253%2027.1631L55.3253%2068.6465L49.9146%2068.6465Z'%20fill='%23D1DAE3'/%3e%3crect%20x='66.3252'%20y='73.9785'%20width='19.0436'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%2066.3252%2073.9785)'%20fill='%23A7F3D0'/%3e%3cpath%20d='M66.3252%2061.0293L66.3252%2019.5613C66.3252%2018.0629%2067.5399%2016.8482%2069.0383%2016.8482C70.5282%2016.8482%2071.736%2018.056%2071.736%2019.5459L71.736%2061.0293L66.3252%2061.0293Z'%20fill='%23FCA5A5'/%3e%3cpath%20d='M66.3252%2024.4648L66.3252%2010.4119C66.3252%208.91775%2067.5364%207.7065%2069.0306%207.7065C70.5247%207.7065%2071.736%208.91774%2071.736%2010.4119L71.736%2024.4648L66.3252%2024.4648Z'%20fill='%23D1DAE3'/%3e%3crect%20x='82.7358'%20y='73.9785'%20width='19.0436'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%2082.7358%2073.9785)'%20fill='%23A7F3D0'/%3e%3cpath%20d='M82.7358%2065.5996L82.7358%2024.1316C82.7358%2022.6332%2083.9505%2021.4185%2085.4489%2021.4185C86.9388%2021.4185%2088.1466%2022.6263%2088.1466%2024.1162L88.1466%2065.5996L82.7358%2065.5996Z'%20fill='%23A7F3D0'/%3e%3crect%20x='99.147'%20y='73.9785'%20width='44.1811'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%2099.147%2073.9785)'%20fill='%23FCA5A5'/%3e%3crect%20x='115.558'%20y='73.9785'%20width='19.0436'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%20115.558%2073.9785)'%20fill='%23D1DAE3'/%3e%3cpath%20d='M115.558%2065.5996L115.558%2053.8396C115.558%2052.3412%20116.772%2051.1265%20118.271%2051.1265C119.761%2051.1265%20120.968%2052.3343%20120.968%2053.8242L120.968%2065.5996L115.558%2065.5996Z'%20fill='%23FCA5A5'/%3e%3crect%20x='131.968'%20y='73.9785'%20width='19.0436'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%20131.968%2073.9785)'%20fill='%23A7F3D0'/%3e%3cpath%20d='M131.968%2068.6465L131.968%2027.1785C131.968%2025.6801%20133.183%2024.4654%20134.681%2024.4654C136.171%2024.4654%20137.379%2025.6732%20137.379%2027.1631L137.379%2068.6465L131.968%2068.6465Z'%20fill='%23D1DAE3'/%3e%3crect%20x='148.379'%20y='73.9785'%20width='19.0436'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%20148.379%2073.9785)'%20fill='%23A7F3D0'/%3e%3cpath%20d='M148.379%2065.5996L148.379%2024.1316C148.379%2022.6332%20149.594%2021.4185%20151.092%2021.4185C152.582%2021.4185%20153.79%2022.6263%20153.79%2024.1162L153.79%2065.5996L148.379%2065.5996Z'%20fill='%23A7F3D0'/%3e%3crect%20x='164.79'%20y='73.9785'%20width='19.0436'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%20164.79%2073.9785)'%20fill='%23A7F3D0'/%3e%3cpath%20d='M164.79%2068.6465L164.79%2027.1785C164.79%2025.6801%20166.005%2024.4654%20167.503%2024.4654C168.993%2024.4654%20170.201%2025.6732%20170.201%2027.1631L170.201%2068.6465L164.79%2068.6465Z'%20fill='%23D1DAE3'/%3e%3crect%20x='181.201'%20y='73.9785'%20width='19.0436'%20height='5.41078'%20rx='2.70539'%20transform='rotate(-90%20181.201%2073.9785)'%20fill='%23A7F3D0'/%3e%3cpath%20d='M181.201%2061.0293L181.201%2019.5613C181.201%2018.0629%20182.415%2016.8482%20183.914%2016.8482C185.404%2016.8482%20186.611%2018.056%20186.611%2019.5459L186.611%2061.0293L181.201%2061.0293Z'%20fill='%23FCA5A5'/%3e%3cpath%20d='M181.201%2024.4648L181.201%2010.4119C181.201%208.91775%20182.412%207.7065%20183.906%207.7065C185.4%207.7065%20186.611%208.91774%20186.611%2010.4119L186.611%2024.4648L181.201%2024.4648Z'%20fill='%23D1DAE3'/%3e%3c/svg%3e",
+  },
+  {
+    title: "Statistics Cards (Single)",
+    desc: "Displays single number statistics card",
+    img: "https://via.placeholder.com/80?text=##",
+  },
+];
+
+export const Graph = ({ open, onClose }) => {
+  const [search, setSearch] = useState("");
+  const [selectedWidget, setSelectedWidget] = useState(null);
+
+  const Buttons = () => {
+    return (
+      <div className="flex gap-2">
+        <button className="border border-gray-400 bg-white rounded-md p-1 text-black">
+          Back
+        </button>
+        <button className="border border-gray-400 bg-blue-400 rounded-md p-1 text-white">
+          Save
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <Modalpopup
+      header={
+        selectedWidget ? (
+          <div className="flex items-center gap-1">
+            <Icon
+              icon="mdi:arrow-left"
+              className="cursor-pointer"
+              onClick={() => setSelectedWidget(null)}
+            />
+            {selectedWidget.title}
+          </div>
+        ) : (
+          "Add widget"
+        )
+      }
+      open={open}
+      onClose={() => {
+        // setSelectedWidget(null);
+        onClose();
+      }}
+      content={
+        selectedWidget ? (
+          <WidgetDetails />
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center border border-gray-400 gap-2 p-2 w-60 focus-within:border-blue-400 focus-within:border-2 rounded-md">
+              <Icon icon="material-symbols:search-rounded" />
+              <input
+                type="text"
+                className="outline-none text-xs"
+                placeholder="Search widget by name"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-4 gap-4">
+              {widgetData
+                .filter((widget) =>
+                  widget.title.toLowerCase().includes(search.toLowerCase())
+                )
+                .map((widget, index) => {
+                  const { img, title, desc } = widget;
+                  return (
+                    <div
+                      key={index}
+                      className="flex flex-col gap-2 cursor-pointer"
+                      onClick={() => setSelectedWidget(widget)}
+                    >
+                      <div className="border rounded-md p-4 hover:shadow-md transition">
+                        <img
+                          src={img}
+                          alt={title}
+                          className="h-20 object-contain"
+                        />
+                      </div>
+                      <div>
+                        <h1 className="font-semibold text-xs">{title}</h1>
+                        <p className="text-xs">{desc}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )
+      }
+      height="600px"
+      width="900px"
+      buttons={selectedWidget && <Buttons />}
+      padding={selectedWidget ? "0px" : "16px"}
+    ></Modalpopup>
+  );
+
+  // const [search, setSearch] = useState("");
+  // const [selectedWidget, setSelectedWidget] = useState(null);
+  // const filteredWidgets = widgetData.filter((w) =>
+  //   w.title.toLowerCase().includes(search.toLowerCase())
+  // );
+  // return (
+  //   <Modalpopup
+  //     header={
+  //       selectedWidget ? (
+  //         <div
+  //           className="flex items-center gap-2 cursor-pointer"
+  //           onClick={() => setSelectedWidget(null)}
+  //         >
+  //           <Icon icon="mdi:arrow-left" />
+  //           <span>{selectedWidget.title}</span>
+  //         </div>
+  //       ) : (
+  //         "Add Widget"
+  //       )
+  //     }
+  //     open={open}
+  //     onClose={onClose}
+  //     width={selectedWidget ? "900px" : "900px"}
+  //     height={selectedWidget ? "600px" : "600px"}
+  //     content={
+  //       selectedWidget ? (
+  //         // Single widget view
+  //         <div className="flex flex-col gap-4 items-center justify-center">
+  //           <img
+  //             src={selectedWidget.img}
+  //             alt={selectedWidget.title}
+  //             className="h-40 object-contain"
+  //           />
+  //           <p className="text-gray-700 text-center">{selectedWidget.desc}</p>
+  //         </div>
+  //       ) : (
+  //         // Grid + search view
+  //         <div className="flex flex-col gap-4">
+  //           {/* Search */}
+  //           <div className="flex gap-2 items-center border border-gray-400 rounded-md p-2 w-64 focus-within:border-blue-400 focus-within:border-2">
+  //             <Icon icon="material-symbols:search-rounded" />
+  //             <input
+  //               type="text"
+  //               placeholder="Search by widget name"
+  //               className="outline-none"
+  //               value={search}
+  //               onChange={(e) => setSearch(e.target.value)}
+  //             />
+  //           </div>
+  //           {/* Widgets Grid */}
+  //           <div className="grid grid-cols-4 gap-4 pr-2">
+  //             {filteredWidgets.map((w, i) => (
+  //               <div
+  //                 key={i}
+  //                 className="flex flex-col gap-2 cursor-pointer"
+  //                 onClick={() => setSelectedWidget(w)}
+  //               >
+  //                 <div className="border rounded-md p-4 flex flex-col gap-2 hover:shadow-md transition">
+  //                   <img
+  //                     src={w.img}
+  //                     alt={w.title}
+  //                     className="h-20 object-contain"
+  //                   />
+  //                 </div>
+  //                 <div>
+  //                   <h3 className="font-semibold text-xs">{w.title}</h3>
+  //                   <p className="text-xs text-gray-600">{w.desc}</p>
+  //                 </div>
+  //               </div>
+  //             ))}
+  //           </div>
+  //         </div>
+  //       )
+  //     }
+  //   />
+  // );
+};
