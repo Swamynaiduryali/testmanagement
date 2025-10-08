@@ -16,7 +16,15 @@ const CreateTestCaseComponent = () => {
   const [selectedProjects, setSelectedProjects] = useState([]);
   const [projectSearch, setProjectSearch] = useState("");
   const [applyToFuture, setApplyToFuture] = useState(false);
-
+  const [isSharedStepModalOpen, setIsSharedStepModalOpen] = useState(false);
+  const [isCreatingSharedStep, setIsCreatingSharedStep] = useState(false);
+  const [sharedStepData, setSharedStepData] = useState({
+    title: "",
+    tags: "",
+    steps: [{ id: 1, step: "", expectedResult: "", actualResult: "", images: { step: [], expectedResult: [], actualResult: [] } }],
+  });
+  const [viewImageModal, setViewImageModal] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -29,10 +37,10 @@ const CreateTestCaseComponent = () => {
     tags: "",
     template: "Test Case Steps",
   });
-
-  const [steps, setSteps] = useState([{ id: 1, step: "", result: "" }]);
+  const [steps, setSteps] = useState([
+    { id: 1, step: "", expectedResult: "", actualResult: "", images: { step: [], expectedResult: [], actualResult: [] } },
+  ]);
   const [createAnother, setCreateAnother] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
 
   const [testCaseFields, setTestCaseFields] = useState([
     {
@@ -78,7 +86,6 @@ const CreateTestCaseComponent = () => {
     { id: "P002", title: "Beta Project" },
     { id: "P003", title: "Gamma Initiative" },
     { id: "P004", title: "Delta Task" },
-    // Add more projects as needed for testing
   ];
 
   const priorityOptions = [
@@ -110,6 +117,72 @@ const CreateTestCaseComponent = () => {
     { value: "Rejected", label: "- Rejected" },
   ];
 
+  const handlePasteOnField = (e, fieldType, stepId, isSharedStep = false) => {
+    const items = e.clipboardData.items;
+    let imagePasted = false;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const timestamp = Date.now();
+          const uniqueFileName = `${file.name.split('.')[0]}_${timestamp}.${file.name.split('.').pop()}`;
+          const uniqueFile = new File([file], uniqueFileName, { type: file.type });
+
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const imageDataUrl = event.target.result;
+            const isDuplicate = (isSharedStep ? sharedStepData.steps : steps)
+              .flatMap((step) => Object.values(step.images).flat())
+              .some((img) => img.file.size === uniqueFile.size && img.file.type === uniqueFile.type);
+
+            if (!isDuplicate) {
+              if (isSharedStep) {
+                setSharedStepData((prev) => ({
+                  ...prev,
+                  steps: prev.steps.map((step) =>
+                    step.id === stepId
+                      ? {
+                          ...step,
+                          images: {
+                            ...step.images,
+                            [fieldType]: [...step.images[fieldType], { file: uniqueFile, dataUrl: imageDataUrl }],
+                          },
+                        }
+                      : step
+                  ),
+                }));
+              } else {
+                setSteps((prev) =>
+                  prev.map((step) =>
+                    step.id === stepId
+                      ? {
+                          ...step,
+                          images: {
+                            ...step.images,
+                            [fieldType]: [...step.images[fieldType], { file: uniqueFile, dataUrl: imageDataUrl }],
+                          },
+                        }
+                      : step
+                  )
+                );
+                setUploadedFiles((prev) => [...prev, uniqueFile]);
+              }
+              alert(`✅ Image pasted into ${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)} field! Click the image below to view.`);
+            } else {
+              alert("⚠️ This image is already attached.");
+            }
+          };
+          reader.readAsDataURL(file);
+          imagePasted = true;
+        }
+      }
+    }
+    if (!imagePasted) {
+      // Default text paste behavior
+    }
+  };
+
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -122,7 +195,10 @@ const CreateTestCaseComponent = () => {
 
   const addStep = () => {
     const newId = steps.length > 0 ? Math.max(...steps.map((s) => s.id)) + 1 : 1;
-    setSteps((prev) => [...prev, { id: newId, step: "", result: "" }]);
+    setSteps((prev) => [
+      ...prev,
+      { id: newId, step: "", expectedResult: "", actualResult: "", images: { step: [], expectedResult: [], actualResult: [] } },
+    ]);
   };
 
   const removeStep = (id) => {
@@ -132,12 +208,38 @@ const CreateTestCaseComponent = () => {
   };
 
   const addSharedStep = () => {
-    console.log("Add shared step clicked");
+    setIsSharedStepModalOpen(true);
   };
 
   const handleFileUpload = (event) => {
     const files = Array.from(event.target.files);
-    setUploadedFiles((prev) => [...prev, ...files]);
+    const newFiles = files.map((file) => {
+      const timestamp = Date.now();
+      const uniqueFileName = `${file.name.split('.')[0]}_${timestamp}.${file.name.split('.').pop()}`;
+      return new File([file], uniqueFileName, { type: file.type });
+    }).filter((f) => !uploadedFiles.some((existing) => existing.size === f.size && existing.type === f.type));
+    setUploadedFiles((prev) => [...prev, ...newFiles]);
+    newFiles.forEach((file) => {
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setSteps((prev) =>
+            prev.map((step, index) =>
+              index === 0
+                ? {
+                    ...step,
+                    images: {
+                      ...step.images,
+                      actualResult: [...step.images.actualResult, { file, dataUrl: event.target.result }],
+                    },
+                  }
+                : step
+            )
+          );
+        };
+        reader.readAsDataURL(file);
+      }
+    });
   };
 
   const resetForm = () => {
@@ -153,7 +255,7 @@ const CreateTestCaseComponent = () => {
       tags: "",
       template: "Test Case Steps",
     });
-    setSteps([{ id: 1, step: "", result: "" }]);
+    setSteps([{ id: 1, step: "", expectedResult: "", actualResult: "", images: { step: [], expectedResult: [], actualResult: [] } }]);
     setUploadedFiles([]);
     setCreateAnother(false);
   };
@@ -161,6 +263,20 @@ const CreateTestCaseComponent = () => {
   const hideForm = () => {
     setIsVisible(false);
     setCurrentView("create");
+    setIsSharedStepModalOpen(false);
+    setIsCreatingSharedStep(false);
+    if (viewImageModal) {
+      URL.revokeObjectURL(viewImageModal);
+      setViewImageModal(null);
+    }
+    steps.forEach((step) => {
+      Object.values(step.images).forEach((imageArray) =>
+        imageArray.forEach(({ file }) => {
+          const url = URL.createObjectURL(file);
+          URL.revokeObjectURL(url);
+        })
+      );
+    });
     resetForm();
   };
 
@@ -182,6 +298,56 @@ const CreateTestCaseComponent = () => {
     } else {
       hideForm();
     }
+  };
+
+  const handleSharedStepInputChange = (field, value) => {
+    setSharedStepData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSharedStepStepChange = (id, field, value) => {
+    setSharedStepData((prev) => ({
+      ...prev,
+      steps: prev.steps.map((step) => (step.id === id ? { ...step, [field]: value } : step)),
+    }));
+  };
+
+  const addSharedStepStep = () => {
+    const newId = sharedStepData.steps.length > 0 ? Math.max(...sharedStepData.steps.map((s) => s.id)) + 1 : 1;
+    setSharedStepData((prev) => ({
+      ...prev,
+      steps: [
+        ...prev.steps,
+        { id: newId, step: "", expectedResult: "", actualResult: "", images: { step: [], expectedResult: [], actualResult: [] } },
+      ],
+    }));
+  };
+
+  const removeSharedStepStep = (id) => {
+    if (sharedStepData.steps.length > 1) {
+      setSharedStepData((prev) => ({
+        ...prev,
+        steps: prev.steps.filter((step) => step.id !== id),
+      }));
+    }
+  };
+
+  const handleCreateSharedStep = () => {
+    setIsCreatingSharedStep(true);
+  };
+
+  const saveSharedStep = () => {
+    if (!sharedStepData.title) {
+      alert("⚠️ Please fill the Title field");
+      return;
+    }
+    console.log("✅ Creating shared step:", sharedStepData);
+    setSharedStepData({
+      title: "",
+      tags: "",
+      steps: [{ id: 1, step: "", expectedResult: "", actualResult: "", images: { step: [], expectedResult: [], actualResult: [] } }],
+    });
+    setIsCreatingSharedStep(false);
+    setIsSharedStepModalOpen(false);
   };
 
   useEffect(() => {
@@ -212,6 +378,30 @@ const CreateTestCaseComponent = () => {
     const cleanup = findAndAttachListener();
     return cleanup;
   }, [isVisible]);
+
+  useEffect(() => {
+    return () => {
+      if (viewImageModal) {
+        URL.revokeObjectURL(viewImageModal);
+      }
+      steps.forEach((step) => {
+        Object.values(step.images).forEach((imageArray) =>
+          imageArray.forEach(({ file }) => {
+            const url = URL.createObjectURL(file);
+            URL.revokeObjectURL(url);
+          })
+        );
+      });
+      sharedStepData.steps.forEach((step) => {
+        Object.values(step.images).forEach((imageArray) =>
+          imageArray.forEach(({ file }) => {
+            const url = URL.createObjectURL(file);
+            URL.revokeObjectURL(url);
+          })
+        );
+      });
+    };
+  }, [viewImageModal, steps, sharedStepData.steps]);
 
   const handleNewFieldChange = (e) => {
     const { name, value } = e.target;
@@ -315,7 +505,7 @@ const CreateTestCaseComponent = () => {
     const field = testCaseFields.find((f) => f.id === editField.id);
     if (field) {
       setSelectedValue(value);
-      setSelectedProjects(field.projects === "All Projects" ? projects.map(p => p.id) : []);
+      setSelectedProjects(field.projects === "All Projects" ? projects.map((p) => p.id) : []);
       setIsProjectModalOpen(true);
     }
   };
@@ -326,14 +516,6 @@ const CreateTestCaseComponent = () => {
         ? prev.filter((id) => id !== projectId)
         : [...prev, projectId]
     );
-  };
-
-  const handleSelectAll = () => {
-    setSelectedProjects(projects.map((p) => p.id));
-  };
-
-  const handleDeselectAll = () => {
-    setSelectedProjects([]);
   };
 
   const handleUpdateProjects = () => {
@@ -549,7 +731,7 @@ const CreateTestCaseComponent = () => {
                   </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-sm mb-1">Type →</label>
+                      <label className="block text-sm mb-1">Type</label>
                       <select
                         name="type"
                         value={newField.type}
@@ -832,6 +1014,285 @@ const CreateTestCaseComponent = () => {
     );
   }
 
+  if (isCreatingSharedStep) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[95vh] flex flex-col">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h2 className="text-xl font-semibold text-gray-800">Create Shared Step</h2>
+            <button onClick={() => setIsCreatingSharedStep(false)} className="text-gray-600 hover:text-gray-800">
+              ✖
+            </button>
+          </div>
+
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1">
+                <label className="block text-sm mb-1">
+                  Shared Step Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={sharedStepData.title}
+                  onChange={(e) => handleSharedStepInputChange("title", e.target.value)}
+                  className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter shared step name"
+                />
+              </div>
+              <div className="w-48">
+                <label className="block text-sm mb-1">Template</label>
+                <select
+                  value="Shared Step Template"
+                  disabled
+                  className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 bg-gray-200 text-gray-700"
+                >
+                  <option>Shared Step Template</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm mb-1">Tags</label>
+              <input
+                type="text"
+                value={sharedStepData.tags}
+                onChange={(e) => handleSharedStepInputChange("tags", e.target.value)}
+                className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500"
+                placeholder="Add tags and hit enter"
+              />
+            </div>
+
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold mb-2">Steps, Expected and Actual Results</h3>
+              {sharedStepData.steps.map((step, index) => (
+                <div key={step.id} className="mb-4 p-4 border rounded-md">
+                  <div className="flex items-center gap-1 w-10 mb-2">
+                    <span className="text-gray-500">||</span>
+                    <span className="text-sm font-medium">{index + 1}</span>
+                  </div>
+                  <div className="flex gap-2 mb-2">
+                    <div className="flex-1">
+                      <label className="block text-sm mb-1">Step</label>
+                      <textarea
+                        rows={3}
+                        value={step.step}
+                        onChange={(e) => handleSharedStepStepChange(step.id, "step", e.target.value)}
+                        onPaste={(e) => handlePasteOnField(e, "step", step.id, true)}
+                        className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500"
+                        placeholder="Details of the step"
+                      />
+                      {step.images.step.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {step.images.step.map((image, idx) => (
+                            <div key={idx} className="relative">
+                              <img
+                                src={image.dataUrl}
+                                alt={`Step image ${idx + 1}`}
+                                className="w-24 h-24 object-contain rounded-md border cursor-pointer"
+                                onClick={() => setViewImageModal(image.dataUrl)}
+                              />
+                              <button
+                                type="button"
+                                className="absolute top-0 right-0 bg-white text-red-600 px-2 py-1 rounded-full text-xs font-semibold shadow"
+                                onClick={() => {
+                                  setSharedStepData((prev) => ({
+                                    ...prev,
+                                    steps: prev.steps.map((s) =>
+                                      s.id === step.id
+                                        ? {
+                                            ...s,
+                                            images: {
+                                              ...s.images,
+                                              step: s.images.step.filter((_, i) => i !== idx),
+                                            },
+                                          }
+                                        : s
+                                    ),
+                                  }));
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-sm mb-1">Expected Result</label>
+                      <textarea
+                        rows={3}
+                        value={step.expectedResult}
+                        onChange={(e) => handleSharedStepStepChange(step.id, "expectedResult", e.target.value)}
+                        onPaste={(e) => handlePasteOnField(e, "expectedResult", step.id, true)}
+                        className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500"
+                        placeholder="Expected result"
+                      />
+                      {step.images.expectedResult.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {step.images.expectedResult.map((image, idx) => (
+                            <div key={idx} className="relative">
+                              <img
+                                src={image.dataUrl}
+                                alt={`Expected Result image ${idx + 1}`}
+                                className="w-24 h-24 object-contain rounded-md border cursor-pointer"
+                                onClick={() => setViewImageModal(image.dataUrl)}
+                              />
+                              <button
+                                type="button"
+                                className="absolute top-0 right-0 bg-white text-red-600 px-2 py-1 rounded-full text-xs font-semibold shadow"
+                                onClick={() => {
+                                  setSharedStepData((prev) => ({
+                                    ...prev,
+                                    steps: prev.steps.map((s) =>
+                                      s.id === step.id
+                                        ? {
+                                            ...s,
+                                            images: {
+                                              ...s.images,
+                                              expectedResult: s.images.expectedResult.filter((_, i) => i !== idx),
+                                            },
+                                          }
+                                        : s
+                                    ),
+                                  }));
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="w-full">
+                    <label className="block text-sm mb-1">Actual Result</label>
+                    <textarea
+                      rows={3}
+                      value={step.actualResult}
+                      onChange={(e) => handleSharedStepStepChange(step.id, "actualResult", e.target.value)}
+                      onPaste={(e) => handlePasteOnField(e, "actualResult", step.id, true)}
+                      className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500"
+                      placeholder="Paste an image "
+                    />
+                    {step.images.actualResult.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {step.images.actualResult.map((image, idx) => (
+                          <div key={idx} className="relative">
+                            <img
+                              src={image.dataUrl}
+                              alt={`Actual Result image ${idx + 1}`}
+                              className="w-24 h-24 object-contain rounded-md border cursor-pointer"
+                              onClick={() => setViewImageModal(image.dataUrl)}
+                            />
+                            <button
+                              type="button"
+                              className="absolute top-0 right-0 bg-white text-red-600 px-2 py-1 rounded-full text-xs font-semibold shadow"
+                              onClick={() => {
+                                setSharedStepData((prev) => ({
+                                  ...prev,
+                                  steps: prev.steps.map((s) =>
+                                    s.id === step.id
+                                      ? {
+                                          ...s,
+                                          images: {
+                                            ...s.images,
+                                            actualResult: s.images.actualResult.filter((_, i) => i !== idx),
+                                          },
+                                        }
+                                      : s
+                                  ),
+                                }));
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {sharedStepData.steps.length > 1 && index === sharedStepData.steps.length - 1 && (
+                    <button
+                      onClick={() => removeSharedStepStep(step.id)}
+                      className="mt-2 w-6 h-6 flex items-center justify-center bg-red-500 text-white rounded-full hover:bg-red-600 focus:outline-none"
+                    >
+                      -
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={addSharedStepStep}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+                >
+                  + Add Step
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 p-4 border-t">
+            <button
+              onClick={() => setIsCreatingSharedStep(false)}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={saveSharedStep}
+              className={`px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 ${
+                !sharedStepData.title ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              disabled={!sharedStepData.title}
+            >
+              Create
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isSharedStepModalOpen) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-labelledby="shared-step-modal-title">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 p-6 max-h-[80vh] flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+            <h2 id="shared-step-modal-title" className="text-xl font-semibold text-gray-800">Add Shared Step</h2>
+            <button
+              onClick={() => setIsSharedStepModalOpen(false)}
+              className="text-gray-600 hover:text-gray-800"
+              aria-label="Close"
+            >
+              ✖
+            </button>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center text-center text-gray-500">
+            <p className="text-lg mb-4">No shared steps available.</p>
+            <button
+              onClick={handleCreateSharedStep}
+              className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+            >
+              + Create Shared Step
+            </button>
+          </div>
+          <div className="flex justify-end gap-2 mt-4 border-t pt-4">
+            <button
+              onClick={() => setIsSharedStepModalOpen(false)}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+              aria-label="Cancel"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[95vh] flex flex-col">
@@ -879,6 +1340,7 @@ const CreateTestCaseComponent = () => {
                 placeholder="Write in brief about the test"
                 value={formData.description}
                 onChange={(e) => handleInputChange("description", e.target.value)}
+                onPaste={(e) => handlePasteOnField(e, "description")}
                 className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -890,21 +1352,20 @@ const CreateTestCaseComponent = () => {
                 placeholder="Define any preconditions"
                 value={formData.preconditions}
                 onChange={(e) => handleInputChange("preconditions", e.target.value)}
+                onPaste={(e) => handlePasteOnField(e, "preconditions")}
                 className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div className="mb-4">
-              <h3 className="text-lg font-semibold mb-2">Steps and Results</h3>
-              {steps.map((step) => (
-                <div key={step.id} className="flex items-start gap-2 mb-2">
-                  <div className="flex items-center gap-1 w-10">
+              <h3 className="text-lg font-semibold mb-2">Steps, Expected and Actual Results</h3>
+              {steps.map((step, index) => (
+                <div key={step.id} className="mb-4 p-4 border rounded-md">
+                  <div className="flex items-center gap-1 w-10 mb-2">
                     <span className="text-gray-500">||</span>
-                    <span className="text-sm font-medium">
-                      {steps.findIndex((s) => s.id === step.id) + 1}
-                    </span>
+                    <span className="text-sm font-medium">{index + 1}</span>
                   </div>
-                  <div className="flex-1 flex gap-2">
+                  <div className="flex gap-2 mb-2">
                     <div className="flex-1">
                       <label className="block text-sm mb-1">Step</label>
                       <textarea
@@ -912,24 +1373,145 @@ const CreateTestCaseComponent = () => {
                         placeholder="Details of the step"
                         value={step.step}
                         onChange={(e) => handleStepChange(step.id, "step", e.target.value)}
+                        onPaste={(e) => handlePasteOnField(e, "step", step.id)}
                         className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500"
                       />
+                      {step.images.step.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {step.images.step.map((image, idx) => (
+                            <div key={idx} className="relative">
+                              <img
+                                src={image.dataUrl}
+                                alt={`Step image ${idx + 1}`}
+                                className="w-24 h-24 object-contain rounded-md border cursor-pointer"
+                                onClick={() => setViewImageModal(image.dataUrl)}
+                              />
+                              <button
+                                type="button"
+                                className="absolute top-0 right-0 bg-white text-red-600 px-2 py-1 rounded-full text-xs font-semibold shadow"
+                                onClick={() => {
+                                  setSteps((prev) =>
+                                    prev.map((s) =>
+                                      s.id === step.id
+                                        ? {
+                                            ...s,
+                                            images: {
+                                              ...s.images,
+                                              step: s.images.step.filter((_, i) => i !== idx),
+                                            },
+                                          }
+                                        : s
+                                    )
+                                  );
+                                  setUploadedFiles((prev) => prev.filter((f) => f !== image.file));
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1">
-                      <label className="block text-sm mb-1">Result</label>
+                      <label className="block text-sm mb-1">Expected Result</label>
                       <textarea
                         rows={3}
-                        placeholder="Expected Result"
-                        value={step.result}
-                        onChange={(e) => handleStepChange(step.id, "result", e.target.value)}
+                        placeholder="Expected result"
+                        value={step.expectedResult}
+                        onChange={(e) => handleStepChange(step.id, "expectedResult", e.target.value)}
+                        onPaste={(e) => handlePasteOnField(e, "expectedResult", step.id)}
                         className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500"
                       />
+                      {step.images.expectedResult.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {step.images.expectedResult.map((image, idx) => (
+                            <div key={idx} className="relative">
+                              <img
+                                src={image.dataUrl}
+                                alt={`Expected Result image ${idx + 1}`}
+                                className="w-24 h-24 object-contain rounded-md border cursor-pointer"
+                                onClick={() => setViewImageModal(image.dataUrl)}
+                              />
+                              <button
+                                type="button"
+                                className="absolute top-0 right-0 bg-white text-red-600 px-2 py-1 rounded-full text-xs font-semibold shadow"
+                                onClick={() => {
+                                  setSteps((prev) =>
+                                    prev.map((s) =>
+                                      s.id === step.id
+                                        ? {
+                                            ...s,
+                                            images: {
+                                              ...s.images,
+                                              expectedResult: s.images.expectedResult.filter((_, i) => i !== idx),
+                                            },
+                                          }
+                                        : s
+                                    )
+                                  );
+                                  setUploadedFiles((prev) => prev.filter((f) => f !== image.file));
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {steps.length > 1 && (
+                  <div className="w-full">
+                    <label className="block text-sm mb-1">Actual Result</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Paste an image "
+                      value={step.actualResult}
+                      onChange={(e) => handleStepChange(step.id, "actualResult", e.target.value)}
+                      onPaste={(e) => handlePasteOnField(e, "actualResult", step.id)}
+                      className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500"
+                    />
+                    {step.images.actualResult.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {step.images.actualResult.map((image, idx) => (
+                          <div key={idx} className="relative">
+                            <img
+                              src={image.dataUrl}
+                              alt={`Actual Result image ${idx + 1}`}
+                              className="w-24 h-24 object-contain rounded-md border cursor-pointer"
+                              onClick={() => setViewImageModal(image.dataUrl)}
+                            />
+                            <button
+                              type="button"
+                              className="absolute top-0 right-0 bg-white text-red-600 px-2 py-1 rounded-full text-xs font-semibold shadow"
+                              onClick={() => {
+                                setSteps((prev) =>
+                                  prev.map((s) =>
+                                    s.id === step.id
+                                      ? {
+                                          ...s,
+                                          images: {
+                                            ...s.images,
+                                            actualResult: s.images.actualResult.filter((_, i) => i !== idx),
+                                          },
+                                        }
+                                      : s
+                                  )
+                                );
+                                setUploadedFiles((prev) => prev.filter((f) => f !== image.file));
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {steps.length > 1 && index === steps.length - 1 && (
                     <button
                       onClick={() => removeStep(step.id)}
-                      className="mt-6 p-2 text-red-500 hover:text-red-700"
+                      className="mt-2 w-6 h-6 flex items-center justify-center bg-red-500 text-white rounded-full hover:bg-red-600 focus:outline-none"
                     >
                       -
                     </button>
@@ -970,11 +1552,13 @@ const CreateTestCaseComponent = () => {
                   ⬆ Upload Files
                 </label>
               </div>
-              <p className="text-sm text-gray-500 mt-1">Max. file size: 50 MB | Max. files: 10</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Max. file size: 50 MB | Max. files: 10 |
+              </p>
               {uploadedFiles.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {uploadedFiles.map((file, index) => (
-                    <div key={index} className="text-sm text-gray-700">
+                    <div key={index} className="text-sm text-gray-700 flex items-center gap-2">
                       {file.name} ({Math.round(file.size / 1024)} KB)
                     </div>
                   ))}
@@ -1131,6 +1715,29 @@ const CreateTestCaseComponent = () => {
           </button>
         </div>
       </div>
+
+      {viewImageModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+          onClick={() => {
+            setViewImageModal(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl p-4 relative max-w-4xl max-h-[90vh] overflow-auto m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setViewImageModal(null)}
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 text-2xl"
+              aria-label="Close image"
+            >
+              ✖
+            </button>
+            <img src={viewImageModal} alt="Pasted/Uploaded Image" className="max-w-full max-h-[80vh] object-contain" />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
