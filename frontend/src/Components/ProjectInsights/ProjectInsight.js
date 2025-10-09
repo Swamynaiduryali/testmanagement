@@ -53,7 +53,7 @@ export const ProjectInsight = () => {
         </div>
       </div>
 
-      <div className="bg-gray-200 h-screen">
+      <div className="bg-gray-200 min-h-screen">
         {activeTab === "Overview" && <Overviewtab />}
         {activeTab === "Automation Health" && <AutomationHealth />}
         {activeTab === "Unique Errors" && <UniqueErrors />}

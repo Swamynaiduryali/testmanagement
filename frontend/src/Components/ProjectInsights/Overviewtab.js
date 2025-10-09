@@ -4,6 +4,8 @@ import { Card } from "../../CommonComponents/Card";
 import { OverTabCreateView } from "./OverTabCreateView";
 import CalenderMUI from "../../CommonComponents/CalenderMUI";
 import { Graph } from "./Graph";
+import { ActiveTestRunsChart } from "./ActiveTestRuns";
+import { DashboardWidget } from "./Dashboard";
 
 export const Overviewtab = () => {
   //viewselection
@@ -19,6 +21,10 @@ export const Overviewtab = () => {
   const [isCalenderOpen, setIsCalenderOpen] = useState(false);
   //graph
   const [isGraph, setIsGraph] = useState(false);
+  // active widgets state to hold saved widgets connection to graph component
+  const [activeWidgets, setActiveWidgets] = useState([]);
+  //Edit kind of things
+  const [widgetToEdit, setWidgetToEdit] = useState(null);
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
@@ -58,6 +64,66 @@ export const Overviewtab = () => {
   const handleGraph = () => {
     setIsGraph((prev) => !prev);
   };
+
+  // Overviewtab.js
+
+  const handleWidgetSave = (widgetDetails) => {
+    // 💡 Determine if we are creating a new widget or updating an existing one
+    if (widgetToEdit) {
+      // --- EDIT ACTION ---
+      setActiveWidgets((prev) =>
+        prev.map((widget) =>
+          widget.id === widgetToEdit.id
+            ? {
+                ...widget,
+                title: widgetDetails.title,
+                type: widgetDetails.widgetType,
+                // Save other updated details (filters, description) here
+              }
+            : widget
+        )
+      );
+      setWidgetToEdit(null); // Stop editing mode
+    } else {
+      // --- CREATE ACTION (Original Logic) ---
+      setActiveWidgets((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          title: widgetDetails.title,
+          type: widgetDetails.widgetType,
+        },
+      ]);
+    }
+
+    // Close the modal
+    handleGraph();
+  };
+
+  // Overviewtab.js
+
+  const handleDelete = (id) => {
+    setActiveWidgets((prev) => prev.filter((widget) => widget.id !== id));
+  };
+
+  const handleClone = (widget) => {
+    setActiveWidgets((prev) => [
+      ...prev,
+      {
+        ...widget,
+        id: Date.now(), // Give it a new unique ID
+        title: `Clone of ${widget.title}`, // Change the title
+      },
+    ]);
+  };
+
+  // Function called when 'Edit' is clicked on the rendered widget menu
+  const handleEdit = (widget) => {
+    setWidgetToEdit(widget); // Set the widget data for the modal
+    setIsGraph(true); // Open the graph modal
+  };
+
+  // ... (days and insightCards arrays remain the same) ..
 
   const days = ["1D", "7D", "30D", "3M", "6M", "1Y", "2Y", "AllTime", "Custom"];
   const insightCards = [
@@ -218,13 +284,51 @@ export const Overviewtab = () => {
         </div>
       </div>
 
-      {isGraph && <Graph open={isGraph} onClose={handleGraph} />}
+      {/* Pass the new handleWidgetSave prop here */}
+      {isGraph && (
+        <Graph
+          open={isGraph}
+          onClose={() => {
+            handleGraph(); // Close modal
+            setWidgetToEdit(null); // Clear editing state
+          }}
+          onSave={handleWidgetSave}
+          // 💡 Pass data to pre-populate the edit modal
+          initialWidgetData={widgetToEdit}
+        />
+      )}
 
       <div className="m-4 flex gap-2">
         {insightCards.map(({ title, value, icon }) => {
           return <Card key={title} name={title} icon={icon} number={value} />;
         })}
       </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {activeWidgets.map((widget) => {
+          // Wrap all charts in the DashboardWidget component
+          return (
+            <DashboardWidget
+              key={widget.id}
+              title={widget.title}
+              onEdit={() => handleEdit(widget)}
+              onDelete={() => handleDelete(widget.id)}
+              onClone={() => handleClone(widget)}
+              onExport={() => alert(`Exporting ${widget.title}...`)}
+            >
+              {/* Render the appropriate chart inside the wrapper */}
+                {widget.type === "ActiveTestRuns" ||
+                widget.type === "ClosedTestRuns" ? (
+                  <ActiveTestRunsChart
+                  />
+                ) : (
+                  <div>Unknown Widget Type: {widget.type}</div>
+                )}
+            </DashboardWidget>
+          );
+        })}
+      </div>
+      {/* ------------------------------------------------ */}
 
       {open && (
         <OverTabCreateView

@@ -26,22 +26,58 @@ const widgetData = [
   },
 ];
 
-export const Graph = ({ open, onClose }) => {
+export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
   const [search, setSearch] = useState("");
-  const [selectedWidget, setSelectedWidget] = useState(null);
+  const [selectedWidget, setSelectedWidget] = useState(
+    initialWidgetData || null
+  );
 
-  const Buttons = () => {
+  // --- Pass onSave to Buttons ---
+  const Buttons = ({ onSave, selectedWidget }) => {
+    // You might want to grab the current state of the WidgetDetails here,
+    // but since it's a separate component, we'll pass a placeholder or null for now.
+    // In a real app, you would lift the WidgetDetails state up to Graph.
+    const handleSaveClick = () => {
+      // Placeholder for the actual widget details
+      const details = {
+        title: selectedWidget.title,
+        widgetType: selectedWidget.title.replace(/\s/g, ""),
+        // Add filter details, name, etc. from WidgetDetails if its state was lifted
+      };
+      onSave(details);
+    };
+
     return (
       <div className="flex gap-2">
-        <button className="border border-gray-400 bg-white rounded-md p-1 text-black">
+        <button
+          className="border border-gray-400 bg-white rounded-md px-3 py-1 text-black"
+          onClick={() => setSelectedWidget(null)} // This is your 'Back' functionality
+        >
           Back
         </button>
-        <button className="border border-gray-400 bg-blue-400 rounded-md p-1 text-white">
+        <button
+          className="border border-gray-400 bg-blue-400 rounded-md px-3 py-1 text-white"
+          onClick={handleSaveClick} // Call the new handler
+        >
           Save
         </button>
       </div>
     );
   };
+  // --------------------------------
+
+  // const Buttons = () => {
+  //   return (
+  //     <div className="flex gap-2">
+  //       <button className="border border-gray-400 bg-white rounded-md p-1 text-black">
+  //         Back
+  //       </button>
+  //       <button className="border border-gray-400 bg-blue-400 rounded-md p-1 text-white">
+  //         Save
+  //       </button>
+  //     </div>
+  //   );
+  // };
 
   return (
     <Modalpopup
@@ -66,7 +102,7 @@ export const Graph = ({ open, onClose }) => {
       }}
       content={
         selectedWidget ? (
-          <WidgetDetails />
+          <WidgetDetails selectedWidgetData={selectedWidget.title} />
         ) : (
           <div className="flex flex-col gap-2">
             <div className="flex items-center border border-gray-400 gap-2 p-2 w-60 focus-within:border-blue-400 focus-within:border-2 rounded-md">
@@ -112,7 +148,11 @@ export const Graph = ({ open, onClose }) => {
       }
       height="600px"
       width="900px"
-      buttons={selectedWidget && <Buttons />}
+      buttons={
+        selectedWidget && (
+          <Buttons onSave={onSave} selectedWidget={selectedWidget} />
+        )
+      }
       padding={selectedWidget ? "0px" : "16px"}
     ></Modalpopup>
   );

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
-import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import { ActiveTestRunsChart } from "../Components/ProjectInsights/ActiveTestRuns";
 
 const allFilters = [
   "Test Run Owners",
@@ -11,73 +11,6 @@ const allFilters = [
   "Test Case Status",
   "CI runs only",
 ];
-
-const testData = [
-  { name: "Passed", value: 238, color: "#22c55e" }, // green
-  { name: "Untested", value: 85, color: "#a3e635" }, // lime
-  { name: "Failed", value: 100, color: "#ef4444" }, // red
-  { name: "Skipped", value: 35, color: "#9ca3af" }, // gray
-  { name: "Retest", value: 20, color: "#facc15" }, // yellow
-  { name: "Blocked", value: 12, color: "#3b82f6" }, // blue
-];
-
-// Custom Tooltip Component (to match the dark box style in the image)
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    const data = payload[0];
-    const total = testData.reduce((sum, item) => sum + item.value, 0);
-    const percentage = ((data.value / total) * 100).toFixed(2);
-
-    return (
-      <div className="bg-gray-800 text-white p-2 rounded-md text-xs font-semibold shadow-lg">
-        <p>
-          <span
-            className="inline-block w-2 h-2 rounded-full mr-2"
-            style={{ backgroundColor: data.color }}
-          ></span>
-          {`${data.name}: ${data.value} (${percentage}%)`}
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
-
-// Custom Legend Component (to display status, count, and percentage)
-const CustomLegend = () => {
-  const total = testData.reduce((sum, item) => sum + item.value, 0);
-
-  return (
-    <div className="ml-4">
-      {testData.map((entry, index) => {
-        const percentage = ((entry.value / total) * 100).toFixed(2);
-        return (
-          <p key={`legend-${index}`} className="flex items-center text-sm mb-2">
-            <span
-              className="inline-block w-2.5 h-2.5 rounded-full mr-2"
-              style={{ backgroundColor: entry.color }}
-            ></span>
-            <span className="text-gray-700 font-medium mr-6">{entry.name}</span>
-            <span className="ml-auto text-gray-600">
-              {entry.value}
-              <span className="ml-1 text-xs text-gray-500">
-                ({percentage}%)
-              </span>
-            </span>
-          </p>
-        );
-      })}
-    </div>
-  );
-};
-
-// Custom Center Content Component (to display total count)
-const CenterContent = ({ total }) => (
-  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-    <p className="text-2xl font-bold">{total}</p>
-    <p className="text-xs text-gray-500">Total Test Cases</p>
-  </div>
-);
 
 // --- FiltersPanel Component (Unchanged) ---
 const FiltersPanel = () => {
@@ -199,13 +132,13 @@ const FiltersPanel = () => {
 };
 
 // --- WidgetDetails Component (Main Component) ---
-export const WidgetDetails = () => {
-  const [widgetName, setWidgetName] = useState("Default Widget Name");
+export const WidgetDetails = ({ selectedWidgetData }) => {
+  const [widgetName, setWidgetName] = useState(selectedWidgetData);
   const [isDescription, setIsDescription] = useState(false);
   const [storeDescription, setStoreDescription] = useState("");
 
   let duplicate =
-    widgetName.trim().toLowerCase() === "default widget name".toLowerCase();
+    widgetName.trim().toLowerCase() === selectedWidgetData.toLowerCase();
   let empty = widgetName.trim() === "";
   let error = "";
   if (empty) {
@@ -214,8 +147,6 @@ export const WidgetDetails = () => {
   if (duplicate) {
     error = "Widget name already exists.";
   }
-
-  const totalTestCases = testData.reduce((sum, item) => sum + item.value, 0);
 
   return (
     <div className="flex bg-gray-100">
@@ -294,41 +225,10 @@ export const WidgetDetails = () => {
       </div>
 
       {/* Right side: Chart Area */}
-      <div className="flex-1 bg-gray-100 px-4 py-6">
+      <div className="flex-1 px-4 py-6">
         <div className="bg-white shadow rounded-lg p-4 flex">
           <div className="flex flex-col">
-            <h2 className="text-lg font-semibold mb-2">Active Test Runs</h2>
-            <div className="flex py-16">
-              {/* Chart Wrapper: Using relative positioning for the center content */}
-              <div className="relative">
-                <PieChart width={250} height={250}>
-                  <Pie
-                    data={testData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={75}
-                    outerRadius={100}
-                    // Removed the default 'label' prop to match the second image style
-                  >
-                    {testData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  {/* Custom Tooltip */}
-                  <Tooltip content={<CustomTooltip />} />
-                </PieChart>
-
-                {/* Total count in the center */}
-                <CenterContent total={totalTestCases} />
-              </div>
-
-              {/* Custom Legend to display data breakdown */}
-              <div className="mt-14 flex-1">
-                <CustomLegend />
-              </div>
-            </div>
+            <ActiveTestRunsChart widgetTitle={selectedWidgetData} />
           </div>
         </div>
       </div>
