@@ -23,7 +23,7 @@ const CreateTestCaseComponent = () => {
     tags: "",
     steps: [{ id: 1, step: "", expectedResult: "", actualResult: "", images: { step: [], expectedResult: [], actualResult: [] } }],
   });
-  const [viewImageModal, setViewImageModal] = useState(null);
+  const [viewImageModalData, setViewImageModalData] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [formData, setFormData] = useState({
     title: "",
@@ -132,45 +132,35 @@ const CreateTestCaseComponent = () => {
           const reader = new FileReader();
           reader.onload = (event) => {
             const imageDataUrl = event.target.result;
-            const isDuplicate = (isSharedStep ? sharedStepData.steps : steps)
-              .flatMap((step) => Object.values(step.images).flat())
-              .some((img) => img.file.size === uniqueFile.size && img.file.type === uniqueFile.type);
-
-            if (!isDuplicate) {
-              if (isSharedStep) {
-                setSharedStepData((prev) => ({
-                  ...prev,
-                  steps: prev.steps.map((step) =>
-                    step.id === stepId
-                      ? {
-                          ...step,
-                          images: {
-                            ...step.images,
-                            [fieldType]: [...step.images[fieldType], { file: uniqueFile, dataUrl: imageDataUrl }],
-                          },
-                        }
-                      : step
-                  ),
-                }));
-              } else {
-                setSteps((prev) =>
-                  prev.map((step) =>
-                    step.id === stepId
-                      ? {
-                          ...step,
-                          images: {
-                            ...step.images,
-                            [fieldType]: [...step.images[fieldType], { file: uniqueFile, dataUrl: imageDataUrl }],
-                          },
-                        }
-                      : step
-                  )
-                );
-                setUploadedFiles((prev) => [...prev, uniqueFile]);
-              }
-              alert(`✅ Image pasted into ${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)} field! Click the image below to view.`);
+            if (isSharedStep) {
+              setSharedStepData((prev) => ({
+                ...prev,
+                steps: prev.steps.map((step) =>
+                  step.id === stepId
+                    ? {
+                        ...step,
+                        images: {
+                          ...step.images,
+                          [fieldType]: [...step.images[fieldType], { file: uniqueFile, dataUrl: imageDataUrl }],
+                        },
+                      }
+                    : step
+                ),
+              }));
             } else {
-              alert("⚠️ This image is already attached.");
+              setSteps((prev) =>
+                prev.map((step) =>
+                  step.id === stepId
+                    ? {
+                        ...step,
+                        images: {
+                          ...step.images,
+                          [fieldType]: [...step.images[fieldType], { file: uniqueFile, dataUrl: imageDataUrl }],
+                        },
+                      }
+                    : step
+                )
+              );
             }
           };
           reader.readAsDataURL(file);
@@ -265,9 +255,12 @@ const CreateTestCaseComponent = () => {
     setCurrentView("create");
     setIsSharedStepModalOpen(false);
     setIsCreatingSharedStep(false);
-    if (viewImageModal) {
-      URL.revokeObjectURL(viewImageModal);
-      setViewImageModal(null);
+    if (viewImageModalData) {
+      viewImageModalData.images.forEach(({ file }) => {
+        const url = URL.createObjectURL(file);
+        URL.revokeObjectURL(url);
+      });
+      setViewImageModalData(null);
     }
     steps.forEach((step) => {
       Object.values(step.images).forEach((imageArray) =>
@@ -381,8 +374,11 @@ const CreateTestCaseComponent = () => {
 
   useEffect(() => {
     return () => {
-      if (viewImageModal) {
-        URL.revokeObjectURL(viewImageModal);
+      if (viewImageModalData) {
+        viewImageModalData.images.forEach(({ file }) => {
+          const url = URL.createObjectURL(file);
+          URL.revokeObjectURL(url);
+        });
       }
       steps.forEach((step) => {
         Object.values(step.images).forEach((imageArray) =>
@@ -401,7 +397,7 @@ const CreateTestCaseComponent = () => {
         );
       });
     };
-  }, [viewImageModal, steps, sharedStepData.steps]);
+  }, [viewImageModalData, steps, sharedStepData.steps]);
 
   const handleNewFieldChange = (e) => {
     const { name, value } = e.target;
@@ -554,6 +550,22 @@ const CreateTestCaseComponent = () => {
       p.id.toLowerCase().includes(projectSearch.toLowerCase()) ||
       p.title.toLowerCase().includes(projectSearch.toLowerCase())
   );
+
+  const handleImageClick = (stepId, fieldType, imageIndex, isSharedStep = false) => {
+    const stepArray = isSharedStep ? sharedStepData.steps : steps;
+    const step = stepArray.find((s) => s.id === stepId);
+    if (step) {
+      const allImages = [
+        ...step.images.step.map((img, idx) => ({ ...img, field: "step", index: idx })),
+        ...step.images.expectedResult.map((img, idx) => ({ ...img, field: "expectedResult", index: idx })),
+        ...step.images.actualResult.map((img, idx) => ({ ...img, field: "actualResult", index: idx })),
+      ];
+      const currentIndex = allImages.findIndex(
+        (img) => img.field === fieldType && img.index === imageIndex
+      );
+      setViewImageModalData({ images: allImages, currentIndex });
+    }
+  };
 
   if (!isVisible) {
     return (
@@ -1089,7 +1101,7 @@ const CreateTestCaseComponent = () => {
                                 src={image.dataUrl}
                                 alt={`Step image ${idx + 1}`}
                                 className="w-24 h-24 object-contain rounded-md border cursor-pointer"
-                                onClick={() => setViewImageModal(image.dataUrl)}
+                                onClick={() => handleImageClick(step.id, "step", idx, true)}
                               />
                               <button
                                 type="button"
@@ -1136,7 +1148,7 @@ const CreateTestCaseComponent = () => {
                                 src={image.dataUrl}
                                 alt={`Expected Result image ${idx + 1}`}
                                 className="w-24 h-24 object-contain rounded-md border cursor-pointer"
-                                onClick={() => setViewImageModal(image.dataUrl)}
+                                onClick={() => handleImageClick(step.id, "expectedResult", idx, true)}
                               />
                               <button
                                 type="button"
@@ -1184,7 +1196,7 @@ const CreateTestCaseComponent = () => {
                               src={image.dataUrl}
                               alt={`Actual Result image ${idx + 1}`}
                               className="w-24 h-24 object-contain rounded-md border cursor-pointer"
-                              onClick={() => setViewImageModal(image.dataUrl)}
+                              onClick={() => handleImageClick(step.id, "actualResult", idx, true)}
                             />
                             <button
                               type="button"
@@ -1384,7 +1396,7 @@ const CreateTestCaseComponent = () => {
                                 src={image.dataUrl}
                                 alt={`Step image ${idx + 1}`}
                                 className="w-24 h-24 object-contain rounded-md border cursor-pointer"
-                                onClick={() => setViewImageModal(image.dataUrl)}
+                                onClick={() => handleImageClick(step.id, "step", idx)}
                               />
                               <button
                                 type="button"
@@ -1431,7 +1443,7 @@ const CreateTestCaseComponent = () => {
                                 src={image.dataUrl}
                                 alt={`Expected Result image ${idx + 1}`}
                                 className="w-24 h-24 object-contain rounded-md border cursor-pointer"
-                                onClick={() => setViewImageModal(image.dataUrl)}
+                                onClick={() => handleImageClick(step.id, "expectedResult", idx)}
                               />
                               <button
                                 type="button"
@@ -1479,7 +1491,7 @@ const CreateTestCaseComponent = () => {
                               src={image.dataUrl}
                               alt={`Actual Result image ${idx + 1}`}
                               className="w-24 h-24 object-contain rounded-md border cursor-pointer"
-                              onClick={() => setViewImageModal(image.dataUrl)}
+                              onClick={() => handleImageClick(step.id, "actualResult", idx)}
                             />
                             <button
                               type="button"
@@ -1716,26 +1728,80 @@ const CreateTestCaseComponent = () => {
         </div>
       </div>
 
-      {viewImageModal && (
+      {viewImageModalData && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 px-12"
           onClick={() => {
-            setViewImageModal(null);
+            viewImageModalData.images.forEach(({ file }) => {
+              const url = URL.createObjectURL(file);
+              URL.revokeObjectURL(url);
+            });
+            setViewImageModalData(null);
           }}
         >
+          {viewImageModalData.images.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewImageModalData((prev) => ({
+                  ...prev,
+                  currentIndex: Math.max(0, prev.currentIndex - 1),
+                }));
+              }}
+              disabled={viewImageModalData.currentIndex === 0}
+              className={`absolute left-4 top-1/2 -translate-y-1/2 text-4xl p-2 rounded-full bg-gray-800 bg-opacity-50 ${
+                viewImageModalData.currentIndex === 0
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-white hover:text-gray-200"
+              }`}
+              aria-label="Previous image"
+            >
+              &lt;
+            </button>
+          )}
           <div
             className="bg-white rounded-lg shadow-xl p-4 relative max-w-4xl max-h-[90vh] overflow-auto m-4"
             onClick={(e) => e.stopPropagation()}
           >
+            <img
+              src={viewImageModalData.images[viewImageModalData.currentIndex].dataUrl}
+              alt={`Image ${viewImageModalData.currentIndex + 1}`}
+              className="max-w-full max-h-[80vh] object-contain"
+            />
             <button
-              onClick={() => setViewImageModal(null)}
+              onClick={() => {
+                viewImageModalData.images.forEach(({ file }) => {
+                  const url = URL.createObjectURL(file);
+                  URL.revokeObjectURL(url);
+                });
+                setViewImageModalData(null);
+              }}
               className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 text-2xl"
               aria-label="Close image"
             >
               ✖
             </button>
-            <img src={viewImageModal} alt="Pasted/Uploaded Image" className="max-w-full max-h-[80vh] object-contain" />
           </div>
+          {viewImageModalData.images.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewImageModalData((prev) => ({
+                  ...prev,
+                  currentIndex: Math.min(prev.images.length - 1, prev.currentIndex + 1),
+                }));
+              }}
+              disabled={viewImageModalData.currentIndex === viewImageModalData.images.length - 1}
+              className={`absolute right-4 top-1/2 -translate-y-1/2 text-4xl p-2 rounded-full bg-gray-800 bg-opacity-50 ${
+                viewImageModalData.currentIndex === viewImageModalData.images.length - 1
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-white hover:text-gray-200"
+              }`}
+              aria-label="Next image"
+            >
+              &gt;
+            </button>
+          )}
         </div>
       )}
     </div>
