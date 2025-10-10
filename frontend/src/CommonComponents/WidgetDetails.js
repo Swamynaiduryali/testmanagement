@@ -132,19 +132,22 @@ const FiltersPanel = () => {
 };
 
 // --- WidgetDetails Component (Main Component) ---
-export const WidgetDetails = ({ selectedWidgetData }) => {
-  const [widgetName, setWidgetName] = useState(selectedWidgetData);
+export const WidgetDetails = ({ initialData, formTitle, setFormTitle }) => {
   const [isDescription, setIsDescription] = useState(false);
   const [storeDescription, setStoreDescription] = useState("");
 
-  let duplicate =
-    widgetName.trim().toLowerCase() === selectedWidgetData.toLowerCase();
-  let empty = widgetName.trim() === "";
+  const originalTitle = initialData.title;
+  let empty = formTitle.trim() === "";
   let error = "";
+
   if (empty) {
     error = "Widget Name is Mandatory";
   }
-  if (duplicate) {
+
+  const isDefaultTitle =
+    formTitle.trim().toLowerCase() === originalTitle.toLowerCase();
+
+  if (isDefaultTitle && !initialData.id) {
     error = "Widget name already exists.";
   }
 
@@ -167,8 +170,8 @@ export const WidgetDetails = ({ selectedWidgetData }) => {
               type="text"
               id="widgetName"
               className={`focus:outline-none flex-1`}
-              value={widgetName}
-              onChange={(e) => setWidgetName(e.target.value)}
+              value={formTitle}
+              onChange={(e) => setFormTitle(e.target.value)}
             />
             {error && (
               <Icon
@@ -228,7 +231,7 @@ export const WidgetDetails = ({ selectedWidgetData }) => {
       <div className="flex-1 px-4 py-6">
         <div className="bg-white shadow rounded-lg p-4 flex">
           <div className="flex flex-col">
-            <ActiveTestRunsChart widgetTitle={selectedWidgetData} />
+            <ActiveTestRunsChart widgetTitle={formTitle} />
           </div>
         </div>
       </div>

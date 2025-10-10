@@ -65,38 +65,34 @@ export const Overviewtab = () => {
     setIsGraph((prev) => !prev);
   };
 
-  // Overviewtab.js
-
   const handleWidgetSave = (widgetDetails) => {
-    // 💡 Determine if we are creating a new widget or updating an existing one
+    const newWidgetData = {
+      title: widgetDetails.title,
+      type: widgetDetails.widgetType,
+    };
+
     if (widgetToEdit) {
-      // --- EDIT ACTION ---
+      console.log("Editing widget:", widgetToEdit);
       setActiveWidgets((prev) =>
         prev.map((widget) =>
           widget.id === widgetToEdit.id
             ? {
                 ...widget,
-                title: widgetDetails.title,
-                type: widgetDetails.widgetType,
-                // Save other updated details (filters, description) here
+                ...newWidgetData,
               }
             : widget
         )
       );
-      setWidgetToEdit(null); // Stop editing mode
+      setWidgetToEdit(null);
     } else {
-      // --- CREATE ACTION (Original Logic) ---
       setActiveWidgets((prev) => [
         ...prev,
         {
           id: Date.now(),
-          title: widgetDetails.title,
-          type: widgetDetails.widgetType,
+          ...newWidgetData,
         },
       ]);
     }
-
-    // Close the modal
     handleGraph();
   };
 
@@ -317,13 +313,12 @@ export const Overviewtab = () => {
               onExport={() => alert(`Exporting ${widget.title}...`)}
             >
               {/* Render the appropriate chart inside the wrapper */}
-                {widget.type === "ActiveTestRuns" ||
-                widget.type === "ClosedTestRuns" ? (
-                  <ActiveTestRunsChart
-                  />
-                ) : (
-                  <div>Unknown Widget Type: {widget.type}</div>
-                )}
+              {widget.type === "ActiveTestRuns" ||
+              widget.type === "ClosedTestRuns" ? (
+                <ActiveTestRunsChart />
+              ) : (
+                <div>Unknown Widget Type: {widget.type}</div>
+              )}
             </DashboardWidget>
           );
         })}

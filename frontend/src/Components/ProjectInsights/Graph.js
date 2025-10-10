@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { Modalpopup } from "../../CommonComponents/Modalpopup";
 import { WidgetDetails } from "../../CommonComponents/WidgetDetails";
@@ -32,17 +32,28 @@ export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
     initialWidgetData || null
   );
 
-  // --- Pass onSave to Buttons ---
-  const Buttons = ({ onSave, selectedWidget }) => {
-    // You might want to grab the current state of the WidgetDetails here,
-    // but since it's a separate component, we'll pass a placeholder or null for now.
-    // In a real app, you would lift the WidgetDetails state up to Graph.
+  // 1. ADD STATE FOR THE TITLE
+  const [formTitle, setFormTitle] = useState(initialWidgetData?.title || "");
+  
+  // 2. SYNC TITLE WHEN WIDGET IS SELECTED/EDITED
+  useEffect(() => {
+    if (initialWidgetData) {
+      // Edit Mode: Pre-populate title
+      setFormTitle(initialWidgetData.title);
+    } else if (selectedWidget) {
+      // Create Mode: Set default title only when a new tile is clicked
+      setFormTitle(selectedWidget.title);
+    }
+  }, [initialWidgetData, selectedWidget]);
+
+  // 3. Buttons Component uses the lifted state
+  const Buttons = ({ onSave, formTitle }) => {
+    // ⬅️ DESTRUCTURE formTitle
     const handleSaveClick = () => {
-      // Placeholder for the actual widget details
+      // Prepare data to send back to Overviewtab
       const details = {
-        title: selectedWidget.title,
-        widgetType: selectedWidget.title.replace(/\s/g, ""),
-        // Add filter details, name, etc. from WidgetDetails if its state was lifted
+        title: formTitle, // ⬅️ USE formTitle state
+        widgetType: formTitle.replace(/\s/g, ""),
       };
       onSave(details);
     };
@@ -51,13 +62,13 @@ export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
       <div className="flex gap-2">
         <button
           className="border border-gray-400 bg-white rounded-md px-3 py-1 text-black"
-          onClick={() => setSelectedWidget(null)} // This is your 'Back' functionality
+          onClick={() => setSelectedWidget(null)}
         >
           Back
         </button>
         <button
           className="border border-gray-400 bg-blue-400 rounded-md px-3 py-1 text-white"
-          onClick={handleSaveClick} // Call the new handler
+          onClick={handleSaveClick}
         >
           Save
         </button>
@@ -65,19 +76,6 @@ export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
     );
   };
   // --------------------------------
-
-  // const Buttons = () => {
-  //   return (
-  //     <div className="flex gap-2">
-  //       <button className="border border-gray-400 bg-white rounded-md p-1 text-black">
-  //         Back
-  //       </button>
-  //       <button className="border border-gray-400 bg-blue-400 rounded-md p-1 text-white">
-  //         Save
-  //       </button>
-  //     </div>
-  //   );
-  // };
 
   return (
     <Modalpopup
@@ -97,12 +95,17 @@ export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
       }
       open={open}
       onClose={() => {
-        // setSelectedWidget(null);
         onClose();
       }}
       content={
         selectedWidget ? (
-          <WidgetDetails selectedWidgetData={selectedWidget.title} />
+          // 4. PASS STATE AND SETTER TO WIDGETDETAILS
+          <WidgetDetails
+            initialData={initialWidgetData || selectedWidget} // ⬅️ Pass full initial data
+            formTitle={formTitle} // ⬅️ Pass state
+            setFormTitle={setFormTitle} // ⬅️ Pass setter
+            // Remove other unused props/state (selectedWidgetData)
+          />
         ) : (
           <div className="flex flex-col gap-2">
             <div className="flex items-center border border-gray-400 gap-2 p-2 w-60 focus-within:border-blue-400 focus-within:border-2 rounded-md">
@@ -150,87 +153,14 @@ export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
       width="900px"
       buttons={
         selectedWidget && (
-          <Buttons onSave={onSave} selectedWidget={selectedWidget} />
+          <Buttons
+            onSave={onSave}
+            // selectedWidget={selectedWidget}
+            formTitle={formTitle}
+          />
         )
       }
       padding={selectedWidget ? "0px" : "16px"}
     ></Modalpopup>
   );
-
-  // const [search, setSearch] = useState("");
-  // const [selectedWidget, setSelectedWidget] = useState(null);
-  // const filteredWidgets = widgetData.filter((w) =>
-  //   w.title.toLowerCase().includes(search.toLowerCase())
-  // );
-  // return (
-  //   <Modalpopup
-  //     header={
-  //       selectedWidget ? (
-  //         <div
-  //           className="flex items-center gap-2 cursor-pointer"
-  //           onClick={() => setSelectedWidget(null)}
-  //         >
-  //           <Icon icon="mdi:arrow-left" />
-  //           <span>{selectedWidget.title}</span>
-  //         </div>
-  //       ) : (
-  //         "Add Widget"
-  //       )
-  //     }
-  //     open={open}
-  //     onClose={onClose}
-  //     width={selectedWidget ? "900px" : "900px"}
-  //     height={selectedWidget ? "600px" : "600px"}
-  //     content={
-  //       selectedWidget ? (
-  //         // Single widget view
-  //         <div className="flex flex-col gap-4 items-center justify-center">
-  //           <img
-  //             src={selectedWidget.img}
-  //             alt={selectedWidget.title}
-  //             className="h-40 object-contain"
-  //           />
-  //           <p className="text-gray-700 text-center">{selectedWidget.desc}</p>
-  //         </div>
-  //       ) : (
-  //         // Grid + search view
-  //         <div className="flex flex-col gap-4">
-  //           {/* Search */}
-  //           <div className="flex gap-2 items-center border border-gray-400 rounded-md p-2 w-64 focus-within:border-blue-400 focus-within:border-2">
-  //             <Icon icon="material-symbols:search-rounded" />
-  //             <input
-  //               type="text"
-  //               placeholder="Search by widget name"
-  //               className="outline-none"
-  //               value={search}
-  //               onChange={(e) => setSearch(e.target.value)}
-  //             />
-  //           </div>
-  //           {/* Widgets Grid */}
-  //           <div className="grid grid-cols-4 gap-4 pr-2">
-  //             {filteredWidgets.map((w, i) => (
-  //               <div
-  //                 key={i}
-  //                 className="flex flex-col gap-2 cursor-pointer"
-  //                 onClick={() => setSelectedWidget(w)}
-  //               >
-  //                 <div className="border rounded-md p-4 flex flex-col gap-2 hover:shadow-md transition">
-  //                   <img
-  //                     src={w.img}
-  //                     alt={w.title}
-  //                     className="h-20 object-contain"
-  //                   />
-  //                 </div>
-  //                 <div>
-  //                   <h3 className="font-semibold text-xs">{w.title}</h3>
-  //                   <p className="text-xs text-gray-600">{w.desc}</p>
-  //                 </div>
-  //               </div>
-  //             ))}
-  //           </div>
-  //         </div>
-  //       )
-  //     }
-  //   />
-  // );
 };
