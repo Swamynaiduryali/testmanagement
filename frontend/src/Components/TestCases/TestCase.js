@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Download, Plus, X, ChevronRight, ChevronDown, Info, Table, MoreVertical, Edit, Copy } from 'lucide-react';
+import { Search, Filter, Download, Plus, X, ChevronRight, ChevronDown, Info, Table, MoreVertical, Edit, Copy, Pencil, Trash2 } from 'lucide-react';
 
 export const TestCase = () => {
   const [activeTab, setActiveTab] = useState('repository');
@@ -42,6 +42,37 @@ export const TestCase = () => {
   const [editFolderDescription, setEditFolderDescription] = useState('');
   const [expandedMoveFolders, setExpandedMoveFolders] = useState({});
   const [sortType, setSortType] = useState('Custom');
+  const [showTestCaseDetails, setShowTestCaseDetails] = useState(false);
+  const [selectedTestCase, setSelectedTestCase] = useState(null);
+  const [showTestMenu, setShowTestMenu] = useState(null);
+  const [newSharedStepTitle, setNewSharedStepTitle] = useState('');
+const [newSharedStepDescription, setNewSharedStepDescription] = useState('');
+const [sharedSteps, setSharedSteps] = useState([]); // New state for shared steps
+const [showSharedStepMenu, setShowSharedStepMenu] = useState(null);
+const [showCreateForm, setShowCreateForm] = useState(false);
+
+const handleCreateSharedStep = () => {
+  if (newSharedStepTitle.trim()) {
+    const newId = `SS-${sharedSteps.length + 1}`;
+    const newSharedStep = {
+      id: newId,
+      title: newSharedStepTitle,
+      description: newSharedStepDescription || '',
+      steps: [{ step: '', result: '' }],
+    };
+    setSharedSteps([...sharedSteps, newSharedStep]);
+    setNewSharedStepTitle('');
+    setNewSharedStepDescription('');
+    setShowCreateForm(false); // Hide form after creation
+  }
+};
+
+const handleDeleteSharedStep = (id) => {
+  if (window.confirm('Are you sure you want to delete this shared step permanently?')) {
+    setSharedSteps(sharedSteps.filter(ss => ss.id !== id));
+    setShowSharedStepMenu(null);
+  }
+};
 
   // Initialize folders with createdAt for sorting
   const [folders, setFolders] = useState([
@@ -88,10 +119,10 @@ export const TestCase = () => {
   ]);
 
   const [testCases, setTestCases] = useState([
-    { id: 'TC-103', title: 'testmo', folder: 'Authentication', priority: 'Medium', owner: 'Lucky Ind', tags: '' },
-    { id: 'TC-99', title: 'TEstsarvind', folder: 'Authentication', priority: 'Medium', owner: 'Lucky Ind', tags: '' },
-    { id: 'TC-1', title: 'Verify that valid user credentials result in successful authentication.', folder: 'Authentication', priority: 'Low', owner: 'Lucky Ind', tags: 'sprint1, +1' },
-    { id: 'TC-2', title: 'Ensure that the user is redirected to the correct landing page after successful authentication', folder: 'Authentication', priority: 'Medium', owner: 'Lucky Ind', tags: 'sprint1, +1' }
+    { id: 'TC-103', title: 'testmo', folder: 'Authentication', priority: 'Medium', owner: 'Lucky Ind', tags: '', description: '', preconditions: '', steps: [{ step: '', result: '' }] },
+    { id: 'TC-99', title: 'TEstsarvind', folder: 'Authentication', priority: 'Medium', owner: 'Lucky Ind', tags: '', description: '', preconditions: '', steps: [{ step: '', result: '' }] },
+    { id: 'TC-1', title: 'Verify that valid user credentials result in successful authentication.', folder: 'Authentication', priority: 'Low', owner: 'Lucky Ind', tags: 'sprint1, +1', description: '', preconditions: '', steps: [{ step: '', result: '' }] },
+    { id: 'TC-2', title: 'Ensure that the user is redirected to the correct landing page after successful authentication', folder: 'Authentication', priority: 'Medium', owner: 'Lucky Ind', tags: 'sprint1, +1', description: '', preconditions: '', steps: [{ step: '', result: '' }] }
   ]);
 
   // Function to sort folders
@@ -281,23 +312,26 @@ export const TestCase = () => {
         folder: folderToUse,
         priority: 'Medium',
         owner: 'Lucky Ind',
-        tags: ''
+        tags: '',
+        description: newTestCaseDescription,
+        preconditions: '',
+        steps: [{ step: '', result: '' }]
       };
       setTestCases([...testCases, newTestCase]);
       
-      const updateFolderCount = (folderList) => {
+      const updateFolderCount = (folderList, delta) => {
         return folderList.map(f => {
           if (f.name === folderToUse) {
-            return { ...f, count: f.count + 1, subCount: f.subCount + 1 };
+            return { ...f, count: f.count + delta, subCount: f.subCount + delta };
           }
           if (f.subfolders) {
-            return { ...f, subfolders: updateFolderCount(f.subfolders) };
+            return { ...f, subfolders: updateFolderCount(f.subfolders, delta) };
           }
           return f;
         });
       };
 
-      setFolders(updateFolderCount(folders));
+      setFolders(updateFolderCount(folders, 1));
       setNewTestCaseTitle('');
       setNewTestCaseFolder('');
       setNewTestCaseDescription('');
@@ -313,16 +347,64 @@ export const TestCase = () => {
   const handleEditTestCase = (testCase) => {
     setEditingTestCase(testCase);
     setEditedTitle(testCase.title);
-    setEditedDescription('');
-    setEditedPreconditions('');
+    setEditedDescription(testCase.description || '');
+    setEditedPreconditions(testCase.preconditions || '');
+    setEditedOwner(testCase.owner);
+    setEditedState(testCase.state || 'Active');
+    setEditedPriority(testCase.priority);
+    setEditedType(testCase.type || 'Other');
+    setEditedAutomationStatus(testCase.automationStatus || 'Not Automated');
+    setEditedTags(testCase.tags);
     setShowEditTestCase(true);
+    if (showTestCaseDetails) setShowTestCaseDetails(false);
   };
 
   const handleUpdateTestCase = () => {
     if (editedTitle.trim()) {
-      setTestCases(testCases.map(tc => tc.id === editingTestCase.id ? { ...tc, title: editedTitle } : tc));
+      const updatedTestCase = {
+        ...editingTestCase,
+        title: editedTitle,
+        description: editedDescription,
+        preconditions: editedPreconditions,
+        owner: editedOwner,
+        state: editedState,
+        priority: editedPriority,
+        type: editedType,
+        automationStatus: editedAutomationStatus,
+        tags: editedTags,
+      };
+      setTestCases(testCases.map(tc => tc.id === editingTestCase.id ? updatedTestCase : tc));
       setShowEditTestCase(false);
       setEditingTestCase(null);
+      if (selectedTestCase && selectedTestCase.id === updatedTestCase.id) {
+        setSelectedTestCase(updatedTestCase);
+      }
+    }
+  };
+
+  const handleDeleteTestCase = (id) => {
+    if (window.confirm('Are you sure you want to delete this test case permanently?')) {
+      const deletedTestCase = testCases.find(tc => tc.id === id);
+      if (deletedTestCase) {
+        setTestCases(testCases.filter(tc => tc.id !== id));
+        const updateFolderCount = (folderList, delta) => {
+          return folderList.map(f => {
+            if (f.name === deletedTestCase.folder) {
+              return { ...f, count: f.count + delta, subCount: f.subCount + delta };
+            }
+            if (f.subfolders) {
+              return { ...f, subfolders: updateFolderCount(f.subfolders, delta) };
+            }
+            return f;
+          });
+        };
+        setFolders(updateFolderCount(folders, -1));
+      }
+      setShowTestMenu(null);
+      if (selectedTestCase && selectedTestCase.id === id) {
+        setShowTestCaseDetails(false);
+        setSelectedTestCase(null);
+      }
     }
   };
 
@@ -383,6 +465,27 @@ export const TestCase = () => {
       if (selectedFolder === folderName) setSelectedFolder(folders[0]?.name || '');
     }
     setShowFolderMenu(null);
+  };
+
+  const handleViewTestCase = (testCase) => {
+    setSelectedTestCase(testCase);
+    setShowTestCaseDetails(true);
+  };
+
+  const handleNextTestCase = () => {
+    const filtered = getFilteredTestCases();
+    const index = filtered.findIndex(tc => tc.id === selectedTestCase.id);
+    if (index < filtered.length - 1) {
+      setSelectedTestCase(filtered[index + 1]);
+    }
+  };
+
+  const handlePreviousTestCase = () => {
+    const filtered = getFilteredTestCases();
+    const index = filtered.findIndex(tc => tc.id === selectedTestCase.id);
+    if (index > 0) {
+      setSelectedTestCase(filtered[index - 1]);
+    }
   };
 
   const renderFolderTree = (folderList, level = 0, parentPath = []) => {
@@ -531,6 +634,169 @@ export const TestCase = () => {
     ));
   };
 
+  const renderTestCaseDetailsModal = () => {
+    if (!selectedTestCase) return null;
+
+    const filtered = getFilteredTestCases();
+    const index = filtered.findIndex(tc => tc.id === selectedTestCase.id);
+    const hasPrevious = index > 0;
+    const hasNext = index < filtered.length - 1;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg w-full max-w-6xl h-5/6 flex flex-col">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 className="text-xl font-semibold">TEST CASE DETAILS</h2>
+            <button onClick={() => setShowTestCaseDetails(false)}>
+              <X size={24} className="text-gray-400 hover:text-gray-600" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            <div className="gap-6 p-6">
+              
+              <div className="col-span-8 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm text-gray-600">{selectedTestCase.id} (i) | 1 version</span>
+                    <h3 className="text-xl font-semibold">{selectedTestCase.title}</h3>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEditTestCase(selectedTestCase)} className="p-1 hover:bg-gray-200 rounded">
+                      <Pencil size={16} className="text-gray-500" /> Edit
+                    </button>
+                    <button className="p-1 hover:bg-gray-200 rounded">
+                      <MoreVertical size={16} className="text-gray-500" />
+                    </button>
+                  </div>
+                </div>
+
+                <button className="w-full py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 flex items-center justify-center gap-2">
+                  <span>✨</span> Automate using BrowserStack AI
+                </button>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Description</label>
+                  <p className="p-3 bg-white border border-gray-300 rounded-lg min-h-[100px]">{selectedTestCase.description || '--'}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Preconditions</label>
+                  <p className="p-3 bg-white border border-gray-300 rounded-lg min-h-[100px]">{selectedTestCase.preconditions || '--'}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <X size={16} /> All Steps & Results:
+                  </h3>
+                  <div className="space-y-4">
+                    {selectedTestCase.steps.map((step, idx) => (
+                      <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                        <h4 className="font-medium flex items-center gap-2"><ChevronDown size={16} /> Step {idx + 1}</h4>
+                        <p className="mt-2">{step.step || '--'}</p>
+                        <h5 className="mt-4 font-medium">Result:</h5>
+                        <p>{step.result || '--'}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-span-4 space-y-4">
+                <div>
+                  
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Template</label>
+                  <p>Test Case Steps</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Owner</label>
+                  <p>{selectedTestCase.owner}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">State</label>
+                  <p className="text-blue-600 flex items-center gap-1"><input type="checkbox" checked className="rounded" readOnly /> Active</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Priority</label>
+                  <p className="text-blue-600">— Medium</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Type of Test Case</label>
+                  <p>{selectedTestCase.type || 'Other'}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Automation Status</label>
+                  <p>{selectedTestCase.automationStatus || 'Not Automated'}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Tags</label>
+                  <p>{selectedTestCase.tags || '--'}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Requirements</label>
+                  <button className="text-blue-600">Add Requirements</button>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Attachments</label>
+                  <p>--</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Created by</label>
+                  <p>Lucky Ind Sep 22, 2025 | 04:05:17 PM (IST)</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Results</label>
+                  <hr className="border-blue-600" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Defects</label>
+                  <hr className="border-blue-600" />
+                </div>
+
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-200 rounded-full mb-2"><Info size={32} className="text-gray-500" /></div>
+                  <h3 className="text-lg font-semibold mb-2">No Results</h3>
+                  <p className="text-gray-600">Once you start linking this test case in a test run, historical result will appear here</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div className="flex justify-between p-6 border-t border-gray-200">
+            <button
+              onClick={handlePreviousTestCase}
+              disabled={!hasPrevious}
+              className={`px-6 py-2 rounded-lg ${hasPrevious ? 'bg-gray-100 hover:bg-gray-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+            >
+              Previous ↑
+            </button>
+            <button
+              onClick={handleNextTestCase}
+              disabled={!hasNext}
+              className={`px-6 py-2 rounded-lg ${hasNext ? 'bg-gray-100 hover:bg-gray-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+            >
+              Next ↓
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
@@ -589,7 +855,7 @@ export const TestCase = () => {
             </div>
           </div>
 
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="flex-1 p-6" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
             <div className="flex gap-3 mb-6">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 text-gray-400" size={20} />
@@ -645,7 +911,7 @@ export const TestCase = () => {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <div className="min-w-full inline-block align-middle">
+                  <div className="min-w-full inline-block align-middle" style={{ maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>
                     <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-gray-200 text-sm font-medium text-gray-600">
                       <div className="col-span-1"><input type="checkbox" className="rounded" /></div>
                       <div className="col-span-1">ID</div>
@@ -659,7 +925,7 @@ export const TestCase = () => {
                       <div key={testCase.id} className="grid grid-cols-12 gap-4 px-4 py-4 border-b border-gray-100 hover:bg-gray-50 items-center">
                         <div className="col-span-1"><input type="checkbox" className="rounded" /></div>
                         <div className="col-span-1 text-sm font-medium">{testCase.id}</div>
-                        <div className="col-span-4 text-sm text-blue-600 hover:underline cursor-pointer">{testCase.title}</div>
+                        <div className="col-span-4 text-sm text-blue-600 hover:underline cursor-pointer" onClick={() => handleViewTestCase(testCase)}>{testCase.title}</div>
                         <div className="col-span-2 text-sm flex items-center gap-2">
                           <span className={`inline-block w-2 h-2 rounded-full ${testCase.priority === 'Low' ? 'bg-green-500' : 'bg-blue-500'}`}></span>
                           {testCase.priority}
@@ -668,7 +934,39 @@ export const TestCase = () => {
                         <div className="col-span-1 text-sm">{testCase.tags || '--'}</div>
                         <div className="col-span-1 flex items-center gap-2">
                           <button onClick={() => handleEditTestCase(testCase)} className="p-1 hover:bg-gray-200 rounded"><Edit size={16} className="text-gray-500" /></button>
-                          <button className="p-1 hover:bg-gray-200 rounded"><MoreVertical size={16} className="text-gray-500" /></button>
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowTestMenu(showTestMenu === testCase.id ? null : testCase.id);
+                              }}
+                              className="p-1 hover:bg-gray-200 rounded"
+                            >
+                              <MoreVertical size={16} className="text-gray-500" />
+                            </button>
+                            {showTestMenu === testCase.id && (
+                              <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50" style={{ top: '100%' }}>
+                                <button
+                                  onClick={() => {
+                                    handleEditTestCase(testCase);
+                                    setShowTestMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                  <Pencil size={16} /> Edit Test Case
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    handleDeleteTestCase(testCase.id);
+                                    setShowTestMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 text-red-600 flex items-center gap-2"
+                                >
+                                  <Trash2 size={16} /> Delete Permanently
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -689,19 +987,122 @@ export const TestCase = () => {
               </div>
             </div>
           </div>
-        </div>
+          </div>
       )}
 
-      {activeTab === 'shared-steps' && (
-        <div className="flex items-center justify-center h-96">
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-200 rounded-full mb-4"><Info size={32} className="text-gray-500" /></div>
-            <h3 className="text-xl font-semibold mb-2">No Shared Steps Available</h3>
-            <p className="text-gray-600 mb-6">Create a shared step by clicking below and save time by reusing it across multiple test cases and runs.</p>
-            <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Create Shared Step</button>
+{activeTab === 'shared-steps' && (
+  <div className="flex-1 p-6" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+    <div className="bg-white rounded-lg border border-gray-200">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <h3 className="font-semibold">Shared Steps</h3>
+      </div>
+      {sharedSteps.length === 0 && !showCreateForm && (
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold mb-2">Add Shared Steps</h3>
+          <p className="text-gray-600 mb-6">You can create shared steps by clicking below</p>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Create Shared Step
+          </button>
+        </div>
+      )}
+      {sharedSteps.length > 0 && (
+        <div className="overflow-x-auto">
+          <div className="min-w-full inline-block align-middle" style={{ maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>
+            <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-gray-200 text-sm font-medium text-gray-600">
+              <div className="col-span-1">ID</div>
+              <div className="col-span-6">TITLE</div>
+              <div className="col-span-4">DESCRIPTION</div>
+              <div className="col-span-1"></div>
+            </div>
+            {sharedSteps.map((sharedStep) => (
+              <div key={sharedStep.id} className="grid grid-cols-12 gap-4 px-4 py-4 border-b border-gray-100 hover:bg-gray-50 items-center">
+                <div className="col-span-1 text-sm font-medium">{sharedStep.id}</div>
+                <div className="col-span-6 text-sm text-blue-600 hover:underline cursor-pointer">{sharedStep.title}</div>
+                <div className="col-span-4 text-sm">{sharedStep.description || '--'}</div>
+                <div className="col-span-1 flex items-center gap-2">
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowSharedStepMenu(showSharedStepMenu === sharedStep.id ? null : sharedStep.id);
+                      }}
+                      className="p-1 hover:bg-gray-200 rounded"
+                    >
+                      <MoreVertical size={16} className="text-gray-500" />
+                    </button>
+                    {showSharedStepMenu === sharedStep.id && (
+                      <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50" style={{ top: '100%' }}>
+                        <button
+                          onClick={() => {
+                            alert(`Edit ${sharedStep.title} (not implemented yet)`);
+                            setShowSharedStepMenu(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <Pencil size={16} /> Edit Shared Step
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleDeleteSharedStep(sharedStep.id);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 text-red-600 flex items-center gap-2"
+                        >
+                          <Trash2 size={16} /> Delete Permanently
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
+      {showCreateForm && (
+        <div className="mt-6 bg-white rounded-lg border border-gray-300 p-4">
+          <div className="flex items-center gap-3">
+            <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+              <option>AI steps</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Enter shared step title and press enter"
+              value={newSharedStepTitle}
+              onChange={(e) => setNewSharedStepTitle(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleCreateSharedStep}
+              disabled={!newSharedStepTitle.trim()}
+              className={`px-4 py-2 rounded-lg ${
+                newSharedStepTitle.trim()
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              <span>✨</span>Create
+            </button>
+          </div>
+          <textarea
+            placeholder="Enter shared step description (optional)"
+            rows={2}
+            value={newSharedStepDescription}
+            onChange={(e) => setNewSharedStepDescription(e.target.value)}
+            className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      )}
+    </div>  
+  </div>
+)}
 
       {activeTab === 'datasets' && (
         <div className="flex items-center justify-center h-96">
@@ -1294,6 +1695,8 @@ export const TestCase = () => {
           </div>
         </div>
       )}
+
+      {showTestCaseDetails && renderTestCaseDetailsModal()}
     </div>
-  );
+  ); 
 };
