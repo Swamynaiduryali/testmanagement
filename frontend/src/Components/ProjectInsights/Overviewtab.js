@@ -113,13 +113,10 @@ export const Overviewtab = () => {
     ]);
   };
 
-  // Function called when 'Edit' is clicked on the rendered widget menu
   const handleEdit = (widget) => {
-    setWidgetToEdit(widget); // Set the widget data for the modal
-    setIsGraph(true); // Open the graph modal
+    setWidgetToEdit(widget);
+    setIsGraph(true);
   };
-
-  // ... (days and insightCards arrays remain the same) ..
 
   const days = ["1D", "7D", "30D", "3M", "6M", "1Y", "2Y", "AllTime", "Custom"];
   const insightCards = [
@@ -280,17 +277,15 @@ export const Overviewtab = () => {
         </div>
       </div>
 
-      {/* Pass the new handleWidgetSave prop here */}
       {isGraph && (
         <Graph
           open={isGraph}
           onClose={() => {
-            handleGraph(); // Close modal
-            setWidgetToEdit(null); // Clear editing state
+            handleGraph();
+            setWidgetToEdit(null);
           }}
           onSave={handleWidgetSave}
-          // 💡 Pass data to pre-populate the edit modal
-          initialWidgetData={widgetToEdit}
+          editWidgetData={widgetToEdit}
         />
       )}
 
@@ -323,7 +318,6 @@ export const Overviewtab = () => {
           );
         })}
       </div>
-      {/* ------------------------------------------------ */}
 
       {open && (
         <OverTabCreateView

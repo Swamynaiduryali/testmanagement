@@ -58,7 +58,6 @@ export const Graph = ({ open, onClose, onSave, editWidgetData }) => {
             Back
           </button>
         )}
-
         <button
           className="border border-gray-400 bg-blue-400 rounded-md px-3 py-1 text-white"
           onClick={handleSaveClick}
@@ -81,16 +80,14 @@ export const Graph = ({ open, onClose, onSave, editWidgetData }) => {
                 onClick={() => setSelectedWidget(null)}
               />
             )}
-            {`${selectedWidget.title} Widget`}
+            {selectedWidget.title}
           </div>
         ) : (
           "Add widget"
         )
       }
       open={open}
-      onClose={() => {
-        onClose();
-      }}
+      onClose={onClose}
       content={
         selectedWidget ? (
           <WidgetDetails
@@ -131,9 +128,7 @@ export const Graph = ({ open, onClose, onSave, editWidgetData }) => {
                         />
                       </div>
                       <div>
-                        <h1 className="font-semibold text-xs whitespace-nowrap">
-                          {title}
-                        </h1>
+                        <h1 className="font-semibold text-xs">{title}</h1>
                         <p className="text-xs">{desc}</p>
                       </div>
                     </div>
@@ -149,6 +144,6 @@ export const Graph = ({ open, onClose, onSave, editWidgetData }) => {
         selectedWidget && <Buttons onSave={onSave} formTitle={formTitle} />
       }
       padding={selectedWidget ? "0px" : "16px"}
-    ></Modalpopup>
+    />
   );
 };
