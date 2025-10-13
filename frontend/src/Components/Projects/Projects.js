@@ -1,41 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
-export const Report = () => {
-  const [activeTab, setActiveTab] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
+export const Projects = () => {
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [showWelcome, setShowWelcome] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false); // New state for edit modal
   const [showImportModal, setShowImportModal] = useState(false); // New state for import modal
-  const [projectName, setProjectName] = useState('');
-  const [projectDescription, setProjectDescription] = useState('');
-  const [editProjectData, setEditProjectData] = useState({ id: '', title: '', subtitle: '' }); // New state for editing project
+  const [projectName, setProjectName] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const [editProjectData, setEditProjectData] = useState({
+    id: "",
+    title: "",
+    subtitle: "",
+  }); // New state for editing project
 
   // Initialize projects from localStorage or use default data
   const getInitialProjects = () => {
     try {
-      const savedProjects = localStorage.getItem('testManagementProjects');
+      const savedProjects = localStorage.getItem("testManagementProjects");
       if (savedProjects) {
         return JSON.parse(savedProjects);
       }
     } catch (error) {
-      console.error('Error loading projects from localStorage:', error);
+      console.error("Error loading projects from localStorage:", error);
     }
 
     // Default projects if nothing in localStorage
     return [
       {
-        id: 'PR-2',
-        title: 'Test',
-        subtitle: 'Test',
+        id: "PR-2",
+        title: "Test",
+        subtitle: "Test",
         testCases: 0,
         testRuns: 0,
         starred: false,
       },
       {
-        id: 'PR-1',
-        title: 'Demo Project',
-        subtitle: 'This project contains test cases and test runs for the demo project',
+        id: "PR-1",
+        title: "Demo Project",
+        subtitle:
+          "This project contains test cases and test runs for the demo project",
         testCases: 100,
         testRuns: 5,
         starred: false,
@@ -49,9 +54,9 @@ export const Report = () => {
   // Save projects to localStorage whenever they change
   useEffect(() => {
     try {
-      localStorage.setItem('testManagementProjects', JSON.stringify(projects));
+      localStorage.setItem("testManagementProjects", JSON.stringify(projects));
     } catch (error) {
-      console.error('Error saving projects to localStorage:', error);
+      console.error("Error saving projects to localStorage:", error);
     }
   }, [projects]);
 
@@ -65,13 +70,13 @@ export const Report = () => {
 
   const handleCreateProject = () => {
     if (!projectName.trim()) {
-      alert('Please enter a project name');
+      alert("Please enter a project name");
       return;
     }
 
     // Generate new project ID
     const maxId = projects.reduce((max, project) => {
-      const num = parseInt(project.id.replace('PR-', ''));
+      const num = parseInt(project.id.replace("PR-", ""));
       return num > max ? num : max;
     }, 0);
 
@@ -87,42 +92,50 @@ export const Report = () => {
 
     setProjects([newProject, ...projects]);
     setShowCreateModal(false);
-    setProjectName('');
-    setProjectDescription('');
+    setProjectName("");
+    setProjectDescription("");
   };
 
   const handleCancelCreate = () => {
     setShowCreateModal(false);
-    setProjectName('');
-    setProjectDescription('');
+    setProjectName("");
+    setProjectDescription("");
   };
 
   const toggleStarProject = (projectId) => {
-    setProjects(projects.map(project =>
-      project.id === projectId
-        ? { ...project, starred: !project.starred }
-        : project
-    ));
+    setProjects(
+      projects.map((project) =>
+        project.id === projectId
+          ? { ...project, starred: !project.starred }
+          : project
+      )
+    );
   };
 
   const handleEditProject = () => {
     if (!editProjectData.title.trim()) {
-      alert('Please enter a project name');
+      alert("Please enter a project name");
       return;
     }
 
-    setProjects(projects.map(project =>
-      project.id === editProjectData.id
-        ? { ...project, title: editProjectData.title.trim(), subtitle: editProjectData.subtitle.trim() }
-        : project
-    ));
+    setProjects(
+      projects.map((project) =>
+        project.id === editProjectData.id
+          ? {
+              ...project,
+              title: editProjectData.title.trim(),
+              subtitle: editProjectData.subtitle.trim(),
+            }
+          : project
+      )
+    );
     setShowEditModal(false);
-    setEditProjectData({ id: '', title: '', subtitle: '' });
+    setEditProjectData({ id: "", title: "", subtitle: "" });
   };
 
   const handleCancelEdit = () => {
     setShowEditModal(false);
-    setEditProjectData({ id: '', title: '', subtitle: '' });
+    setEditProjectData({ id: "", title: "", subtitle: "" });
   };
 
   const handleOpenEditModal = (project) => {
@@ -135,8 +148,8 @@ export const Report = () => {
   };
 
   const deleteProject = (projectId) => {
-    if (window.confirm('Are you sure you want to delete this project?')) {
-      setProjects(projects.filter(project => project.id !== projectId));
+    if (window.confirm("Are you sure you want to delete this project?")) {
+      setProjects(projects.filter((project) => project.id !== projectId));
     }
   };
 
@@ -158,43 +171,48 @@ export const Report = () => {
 
   const actionCards = [
     {
-      icon: '📋',
-      bgColor: 'bg-blue-100',
-      title: 'Create a New Project',
-      description: 'Start from a clean slate and add data through CSV import',
+      icon: "📋",
+      bgColor: "bg-blue-100",
+      title: "Create a New Project",
+      description: "Start from a clean slate and add data through CSV import",
       action: () => setShowCreateModal(true),
     },
     {
-      icon: '➕',
-      bgColor: 'bg-blue-100',
-      title: 'Explore the Demo Project',
-      description: 'View the demo project to explore features of Test Management',
-      action: () => console.log('Explore Demo Project clicked'),
+      icon: "➕",
+      bgColor: "bg-blue-100",
+      title: "Explore the Demo Project",
+      description:
+        "View the demo project to explore features of Test Management",
+      action: () => console.log("Explore Demo Project clicked"),
     },
     {
-      icon: '⬇',
-      bgColor: 'bg-blue-100',
-      title: 'Import from TestRail, Zephyr Scale, qTest or Xray',
-      description: 'Start migrating data from your existing tool to Test Management',
-      action: () => console.log('Import clicked'),
+      icon: "⬇",
+      bgColor: "bg-blue-100",
+      title: "Import from TestRail, Zephyr Scale, qTest or Xray",
+      description:
+        "Start migrating data from your existing tool to Test Management",
+      action: () => console.log("Import clicked"),
     },
     {
-      icon: '✨',
-      bgColor: 'bg-blue-600',
-      title: 'Generate Test Case with AI',
-      description: 'Save hours with AI-powered test case creation. Try it now in the demo project',
-      action: () => console.log('Generate Test Case with AI clicked'),
+      icon: "✨",
+      bgColor: "bg-blue-600",
+      title: "Generate Test Case with AI",
+      description:
+        "Save hours with AI-powered test case creation. Try it now in the demo project",
+      action: () => console.log("Generate Test Case with AI clicked"),
       isHighlight: true,
     },
   ];
 
-  const filteredProjects = projects.filter(project =>
-    project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.id.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProjects = projects.filter(
+    (project) =>
+      project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const starredProjects = filteredProjects.filter(project => project.starred);
-  const displayedProjects = activeTab === 'starred' ? starredProjects : filteredProjects;
+  const starredProjects = filteredProjects.filter((project) => project.starred);
+  const displayedProjects =
+    activeTab === "starred" ? starredProjects : filteredProjects;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -202,10 +220,10 @@ export const Report = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-2">
-            <button className="text-gray-600 hover:text-gray-800">
-              ←
-            </button>
-            <h1 className="text-2xl font-semibold text-gray-900">All Projects</h1>
+            <button className="text-gray-600 hover:text-gray-800">←</button>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              All Projects
+            </h1>
           </div>
           <div className="flex space-x-2">
             <button
@@ -226,34 +244,44 @@ export const Report = () => {
         {/* Tabs */}
         <div className="flex gap-8 border-b border-gray-200 mb-6">
           <button
-            onClick={() => handleTabChange('all')}
+            onClick={() => handleTabChange("all")}
             className={`pb-3 px-1 font-medium border-b-2 transition ${
-              activeTab === 'all'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+              activeTab === "all"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
-            All Projects <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-sm">{projects.length}</span>
+            All Projects{" "}
+            <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-sm">
+              {projects.length}
+            </span>
           </button>
           <button
-            onClick={() => handleTabChange('starred')}
+            onClick={() => handleTabChange("starred")}
             className={`pb-3 px-1 font-medium border-b-2 transition ${
-              activeTab === 'starred'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+              activeTab === "starred"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
-            Starred Projects <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-sm">{starredProjects.length}</span>
+            Starred Projects{" "}
+            <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-sm">
+              {starredProjects.length}
+            </span>
           </button>
         </div>
 
         {/* Welcome Banner - Only show on "All Projects" tab */}
-        {showWelcome && activeTab === 'all' && (
+        {showWelcome && activeTab === "all" && (
           <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Welcome to Test Management</h2>
-                <p className="text-gray-600 mt-1">Get started by using one of the actions below</p>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Welcome to Test Management
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  Get started by using one of the actions below
+                </p>
               </div>
               <button
                 onClick={() => setShowWelcome(false)}
@@ -269,13 +297,15 @@ export const Report = () => {
                 <button
                   key={index}
                   className={`${card.bgColor} ${
-                    card.isHighlight ? 'text-white' : 'text-gray-900'
+                    card.isHighlight ? "text-white" : "text-gray-900"
                   } rounded-lg p-4 flex items-start gap-4 hover:opacity-90 transition text-left`}
                   onClick={card.action}
                 >
-                  <div className={`text-2xl flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg ${
-                    card.isHighlight ? 'bg-blue-700' : 'bg-white'
-                  }`}>
+                  <div
+                    className={`text-2xl flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg ${
+                      card.isHighlight ? "bg-blue-700" : "bg-white"
+                    }`}
+                  >
                     {card.icon}
                   </div>
                   <div className="flex-1">
@@ -283,7 +313,11 @@ export const Report = () => {
                       <h3 className="font-medium">{card.title}</h3>
                       <span className="text-xl">→</span>
                     </div>
-                    <p className={`text-sm ${card.isHighlight ? 'text-blue-100' : 'text-gray-600'}`}>
+                    <p
+                      className={`text-sm ${
+                        card.isHighlight ? "text-blue-100" : "text-gray-600"
+                      }`}
+                    >
                       {card.description}
                     </p>
                   </div>
@@ -295,7 +329,9 @@ export const Report = () => {
 
         {/* Search Bar */}
         <div className="relative mb-6">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            🔍
+          </span>
           <input
             type="text"
             placeholder="Search projects by title/ID"
@@ -310,25 +346,40 @@ export const Report = () => {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700 w-24">ID</th>
-                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700">PROJECT TITLE</th>
-                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700">QUICK LINKS</th>
+                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700 w-24">
+                  ID
+                </th>
+                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700">
+                  PROJECT TITLE
+                </th>
+                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700">
+                  QUICK LINKS
+                </th>
                 <th className="w-12"></th>
               </tr>
             </thead>
             <tbody>
               {displayedProjects.map((project, index) => (
-                <tr key={project.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
+                <tr
+                  key={project.id}
+                  className="border-b border-gray-200 hover:bg-gray-50 transition"
+                >
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-2">
                       <button
-                        className={`text-2xl ${project.starred ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400`}
+                        className={`text-2xl ${
+                          project.starred ? "text-yellow-400" : "text-gray-300"
+                        } hover:text-yellow-400`}
                         onClick={() => toggleStarProject(project.id)}
-                        aria-label={project.starred ? 'Unstar project' : 'Star project'}
+                        aria-label={
+                          project.starred ? "Unstar project" : "Star project"
+                        }
                       >
-                        {project.starred ? '★' : '☆'}
+                        {project.starred ? "★" : "☆"}
                       </button>
-                      <span className="text-sm font-medium text-gray-700">{project.id}</span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {project.id}
+                      </span>
                     </div>
                   </td>
                   <td className="py-4 px-6">
@@ -339,9 +390,13 @@ export const Report = () => {
                         </div>
                       )}
                       <div>
-                        <div className="font-medium text-gray-900">{project.title}</div>
+                        <div className="font-medium text-gray-900">
+                          {project.title}
+                        </div>
                         {project.subtitle && (
-                          <div className="text-sm text-gray-500 mt-0.5">{project.subtitle}</div>
+                          <div className="text-sm text-gray-500 mt-0.5">
+                            {project.subtitle}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -359,16 +414,25 @@ export const Report = () => {
                   </td>
                   <td className="py-4 px-6">
                     <div className="relative group">
-                      <button className="text-gray-400 hover:text-gray-600" aria-label="Project actions">
+                      <button
+                        className="text-gray-400 hover:text-gray-600"
+                        aria-label="Project actions"
+                      >
                         ⋮
                       </button>
                       <div className="hidden group-hover:block absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                         <button
                           className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                           onClick={() => toggleStarProject(project.id)}
-                          aria-label={project.starred ? 'Remove from Starred' : 'Add to Starred'}
+                          aria-label={
+                            project.starred
+                              ? "Remove from Starred"
+                              : "Add to Starred"
+                          }
                         >
-                          {project.starred ? 'Remove from Starred' : 'Add to Starred'}
+                          {project.starred
+                            ? "Remove from Starred"
+                            : "Add to Starred"}
                         </button>
                         <button
                           className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -395,19 +459,28 @@ export const Report = () => {
 
         {displayedProjects.length === 0 && (
           <div className="text-center py-12 text-gray-500">
-            {activeTab === 'starred'
-              ? 'No starred projects yet. Star a project to see it here.'
-              : 'No projects found matching your search.'}
+            {activeTab === "starred"
+              ? "No starred projects yet. Star a project to see it here."
+              : "No projects found matching your search."}
           </div>
         )}
       </div>
 
       {/* Create Project Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-labelledby="create-project-modal-title">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          role="dialog"
+          aria-labelledby="create-project-modal-title"
+        >
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 id="create-project-modal-title" className="text-xl font-semibold text-gray-900">Create Project</h2>
+              <h2
+                id="create-project-modal-title"
+                className="text-xl font-semibold text-gray-900"
+              >
+                Create Project
+              </h2>
               <button
                 onClick={handleCancelCreate}
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
@@ -427,7 +500,7 @@ export const Report = () => {
                   placeholder="Enter project name"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleCreateProject()}
+                  onKeyPress={(e) => e.key === "Enter" && handleCreateProject()}
                   className="w-full px-3 py-2 border border-blue-500 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   autoFocus
                   aria-required="true"
@@ -470,10 +543,19 @@ export const Report = () => {
 
       {/* Edit Project Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-labelledby="edit-project-modal-title">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          role="dialog"
+          aria-labelledby="edit-project-modal-title"
+        >
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 id="edit-project-modal-title" className="text-xl font-semibold text-gray-900">Edit Project</h2>
+              <h2
+                id="edit-project-modal-title"
+                className="text-xl font-semibold text-gray-900"
+              >
+                Edit Project
+              </h2>
               <button
                 onClick={handleCancelEdit}
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
@@ -492,8 +574,13 @@ export const Report = () => {
                   type="text"
                   placeholder="Enter project name"
                   value={editProjectData.title}
-                  onChange={(e) => setEditProjectData({ ...editProjectData, title: e.target.value })}
-                  onKeyPress={(e) => e.key === 'Enter' && handleEditProject()}
+                  onChange={(e) =>
+                    setEditProjectData({
+                      ...editProjectData,
+                      title: e.target.value,
+                    })
+                  }
+                  onKeyPress={(e) => e.key === "Enter" && handleEditProject()}
                   className="w-full px-3 py-2 border border-blue-500 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   autoFocus
                   aria-required="true"
@@ -507,7 +594,12 @@ export const Report = () => {
                 <textarea
                   placeholder="Write in brief about the project"
                   value={editProjectData.subtitle}
-                  onChange={(e) => setEditProjectData({ ...editProjectData, subtitle: e.target.value })}
+                  onChange={(e) =>
+                    setEditProjectData({
+                      ...editProjectData,
+                      subtitle: e.target.value,
+                    })
+                  }
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
                 />
@@ -536,10 +628,19 @@ export const Report = () => {
 
       {/* New Quick Import Modal */}
       {showImportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-labelledby="import-modal-title">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          role="dialog"
+          aria-labelledby="import-modal-title"
+        >
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 id="import-modal-title" className="text-xl font-semibold text-gray-900">Import Test Cases From</h2>
+              <h2
+                id="import-modal-title"
+                className="text-xl font-semibold text-gray-900"
+              >
+                Import Test Cases From
+              </h2>
               <button
                 onClick={handleCancelImport}
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
@@ -551,31 +652,31 @@ export const Report = () => {
 
             <div className="p-6 space-y-2">
               <button
-                onClick={() => handleImportFrom('TestRail')}
+                onClick={() => handleImportFrom("TestRail")}
                 className="w-full text-left px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm text-gray-700"
               >
                 ⬤ TestRail
               </button>
               <button
-                onClick={() => handleImportFrom('Xray')}
+                onClick={() => handleImportFrom("Xray")}
                 className="w-full text-left px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm text-gray-700"
               >
                 ⬤ Xray
               </button>
               <button
-                onClick={() => handleImportFrom('Zephyr Scale')}
+                onClick={() => handleImportFrom("Zephyr Scale")}
                 className="w-full text-left px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm text-gray-700"
               >
                 ⬤ Zephyr Scale
               </button>
               <button
-                onClick={() => handleImportFrom('Zephyr Squad')}
+                onClick={() => handleImportFrom("Zephyr Squad")}
                 className="w-full text-left px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm text-gray-700"
               >
                 ⬤ Zephyr Squad
               </button>
               <button
-                onClick={() => handleImportFrom('qTest')}
+                onClick={() => handleImportFrom("qTest")}
                 className="w-full text-left px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm text-gray-700"
               >
                 ⬤ qTest

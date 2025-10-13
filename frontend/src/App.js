@@ -10,10 +10,11 @@ import { ProjectInsight } from "./Components/ProjectInsights/ProjectInsight";
 import { TestCase } from "./Components/TestCases/TestCase";
 import { TestRun } from "./Components/TestRuns/TestRun";
 import { TestPlan } from "./Components/TestPlans/TestPlan";
-import { Report } from "./Components/Reports/Report";
+import { Projects } from "./Components/Projects/Projects";
 import { CreateTestCase } from "./Components/CreateTestCases/CreateTestCase";
 
 const menuItems = [
+  { name: "Projects", icon: "mdi:chart-bar", path: "/projects" },
   {
     name: "Project Insights",
     icon: "uis:graph-bar",
@@ -22,7 +23,6 @@ const menuItems = [
   { name: "Test Cases", icon: "mdi:clipboard-list", path: "/test-cases" },
   { name: "Test Runs", icon: "mdi:play-circle", path: "/test-runs" },
   { name: "Test Plans", icon: "mdi:file-document", path: "/test-plans" },
-  { name: "Reports", icon: "mdi:chart-bar", path: "/reports" },
   {
     name: "Create Test Cases",
     icon: "mdi:clipboard-list",
@@ -42,13 +42,13 @@ export const App = () => {
         {/* Right Panel with Routes */}
         <div className="flex-1 overflow-auto">
           <Routes>
+            <Route path="/projecs" element={<Projects />} />
             <Route path="/project-insights" element={<ProjectInsight />} />
             <Route path="/test-cases" element={<TestCase />} />
             <Route path="/test-runs" element={<TestRun />} />
             <Route path="/test-plans" element={<TestPlan />} />
-            <Route path="/reports" element={<Report />} />
             <Route path="/create-test-cases" element={<CreateTestCase />} />
-            <Route path="*" element={<ProjectInsight />} />
+            <Route path="*" element={<Projects />} />
             {/* default route */}
           </Routes>
         </div>
