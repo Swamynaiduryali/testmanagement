@@ -58,6 +58,8 @@ export const ProjectInsight = () => {
         {activeTab === "Automation Health" && <AutomationHealth />}
         {activeTab === "Unique Errors" && <UniqueErrors />}
       </div>
+
+      
     </div>
   );
 };

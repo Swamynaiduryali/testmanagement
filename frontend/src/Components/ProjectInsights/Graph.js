@@ -26,33 +26,23 @@ const widgetData = [
   },
 ];
 
-export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
+export const Graph = ({ open, onClose, onSave, editWidgetData }) => {
   const [search, setSearch] = useState("");
-  const [selectedWidget, setSelectedWidget] = useState(
-    initialWidgetData || null
-  );
+  const [selectedWidget, setSelectedWidget] = useState(editWidgetData || null);
+  const [formTitle, setFormTitle] = useState(editWidgetData?.title || "");
 
-  // 1. ADD STATE FOR THE TITLE
-  const [formTitle, setFormTitle] = useState(initialWidgetData?.title || "");
-  
-  // 2. SYNC TITLE WHEN WIDGET IS SELECTED/EDITED
   useEffect(() => {
-    if (initialWidgetData) {
-      // Edit Mode: Pre-populate title
-      setFormTitle(initialWidgetData.title);
+    if (editWidgetData) {
+      setFormTitle(editWidgetData.title);
     } else if (selectedWidget) {
-      // Create Mode: Set default title only when a new tile is clicked
       setFormTitle(selectedWidget.title);
     }
-  }, [initialWidgetData, selectedWidget]);
+  }, [editWidgetData, selectedWidget]);
 
-  // 3. Buttons Component uses the lifted state
   const Buttons = ({ onSave, formTitle }) => {
-    // ⬅️ DESTRUCTURE formTitle
     const handleSaveClick = () => {
-      // Prepare data to send back to Overviewtab
       const details = {
-        title: formTitle, // ⬅️ USE formTitle state
+        title: formTitle,
         widgetType: formTitle.replace(/\s/g, ""),
       };
       onSave(details);
@@ -60,12 +50,15 @@ export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
 
     return (
       <div className="flex gap-2">
-        <button
-          className="border border-gray-400 bg-white rounded-md px-3 py-1 text-black"
-          onClick={() => setSelectedWidget(null)}
-        >
-          Back
-        </button>
+        {!editWidgetData && (
+          <button
+            className="border border-gray-400 bg-white rounded-md px-3 py-1 text-black"
+            onClick={() => setSelectedWidget(null)}
+          >
+            Back
+          </button>
+        )}
+
         <button
           className="border border-gray-400 bg-blue-400 rounded-md px-3 py-1 text-white"
           onClick={handleSaveClick}
@@ -75,19 +68,20 @@ export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
       </div>
     );
   };
-  // --------------------------------
 
   return (
     <Modalpopup
       header={
         selectedWidget ? (
           <div className="flex items-center gap-1">
-            <Icon
-              icon="mdi:arrow-left"
-              className="cursor-pointer"
-              onClick={() => setSelectedWidget(null)}
-            />
-            {selectedWidget.title}
+            {!editWidgetData && (
+              <Icon
+                icon="mdi:arrow-left"
+                className="cursor-pointer"
+                onClick={() => setSelectedWidget(null)}
+              />
+            )}
+            {`${selectedWidget.title} Widget`}
           </div>
         ) : (
           "Add widget"
@@ -99,12 +93,10 @@ export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
       }}
       content={
         selectedWidget ? (
-          // 4. PASS STATE AND SETTER TO WIDGETDETAILS
           <WidgetDetails
-            initialData={initialWidgetData || selectedWidget} // ⬅️ Pass full initial data
-            formTitle={formTitle} // ⬅️ Pass state
-            setFormTitle={setFormTitle} // ⬅️ Pass setter
-            // Remove other unused props/state (selectedWidgetData)
+            initialData={editWidgetData || selectedWidget}
+            formTitle={formTitle}
+            setFormTitle={setFormTitle}
           />
         ) : (
           <div className="flex flex-col gap-2">
@@ -139,7 +131,9 @@ export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
                         />
                       </div>
                       <div>
-                        <h1 className="font-semibold text-xs">{title}</h1>
+                        <h1 className="font-semibold text-xs whitespace-nowrap">
+                          {title}
+                        </h1>
                         <p className="text-xs">{desc}</p>
                       </div>
                     </div>
@@ -152,13 +146,7 @@ export const Graph = ({ open, onClose, onSave, initialWidgetData }) => {
       height="600px"
       width="900px"
       buttons={
-        selectedWidget && (
-          <Buttons
-            onSave={onSave}
-            // selectedWidget={selectedWidget}
-            formTitle={formTitle}
-          />
-        )
+        selectedWidget && <Buttons onSave={onSave} formTitle={formTitle} />
       }
       padding={selectedWidget ? "0px" : "16px"}
     ></Modalpopup>
