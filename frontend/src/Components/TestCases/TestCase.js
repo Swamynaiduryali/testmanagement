@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Folder } from 'lucide-react';
 
+const BACKEND_API_KEY = process.env.REACT_APP_BACKEND_API_KEY;
+ 
+// Check if the key is available and throw an error if not
+if (!BACKEND_API_KEY) {
+  throw new Error(
+    "Missing API Key! Please check your .env file and build config."
+  );
+}
+
 export const TestCase = () => {
   const [folderData, setFolderData] = useState([]);
   const [projectsData, setProjectsData] = useState([]);
@@ -8,7 +17,7 @@ export const TestCase = () => {
   const BASE_URL = "http://localhost:3100";
   const AUTH_HEADER = {
     "Content-Type": "application/json",
-    Authorization: "ApiKey tk_dev_Uo7oQJCarfq1Y4IuR1O17fpJXTrnnhBOhR8F5mG3XoA",
+    Authorization: `ApiKey ${BACKEND_API_KEY}`,
   };
 
   useEffect(() => {
@@ -86,7 +95,7 @@ export const TestCase = () => {
         key={folder.id}
         className="flex items-center py-2 px-3 hover:bg-blue-50 cursor-pointer rounded"
       >
-        <Folder className="w-4 h-4 mr-2 text-blue-500" />cd
+        <Folder className="w-4 h-4 mr-2 text-blue-500" />
         <span className="text-sm text-gray-700">{folder.name}</span>
       </div>
     ));
