@@ -25,24 +25,27 @@ export const Projects = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const projectsRes = await fetch(`${BASE_URL}/api/projects?page=1&page_size=20`, {
+        const projectsRes = await fetch(
+          `${BASE_URL}/api/projects?page=1&page_size=20`,
+          {
             method: "GET",
             headers: AUTH_HEADER,
-        });
-        if (!projectsRes.ok) throw new Error('Failed to fetch');
+          }
+        );
+        if (!projectsRes.ok) throw new Error("Failed to fetch");
         const projectsData = await projectsRes.json();
         const rawProjects = projectsData.data || [];
         const sortedProjects = rawProjects
-          .filter(p => !p.deleted_at)
+          .filter((p) => !p.deleted_at)
           .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         const mappedProjects = sortedProjects.map((p, index) => ({
           id: p.id || "",
           uniqueId: index + 1,
-          title: p.name || 'Untitled',
+          title: p.name || "Untitled",
         }));
         setProjects(mappedProjects);
       } catch (err) {
-        console.error('Error:', err);
+        console.error("Error:", err);
         setProjects([]); // Empty on error
       } finally {
         setLoading(false);
@@ -53,11 +56,14 @@ export const Projects = () => {
 
   // Navigate with DB ID
   const handleNavigateToTestCases = (project) => {
-    console.log('Routing with DB ID:', project.id); // Test log
-    navigate('/test-cases', { state: { projectDbId: project.id, projectTitle: project.title } });
+    console.log("Routing with DB ID:", project.id); // Test log
+    navigate("/test-cases", {
+      state: { projectDbId: project.id, projectTitle: project.title },
+    });
   };
 
-  if (loading) return <div className="text-center py-12 text-gray-500">Loading...</div>;
+  if (loading)
+    return <div className="text-center py-12 text-gray-500">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -74,27 +80,40 @@ export const Projects = () => {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700 w-24">ID</th>
-                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700">PROJECT NAME</th>
+                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700 w-24">
+                  ID
+                </th>
+                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700">
+                  PROJECT NAME
+                </th>
               </tr>
             </thead>
             <tbody>
               {projects.map((project) => (
-                <tr key={project.id} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="py-4 px-6 text-sm font-medium text-gray-700">{project.uniqueId || 'N/A'}</td>
+                <tr
+                  key={project.id}
+                  className="border-b border-gray-200 hover:bg-gray-50"
+                >
+                  <td className="py-4 px-6 text-sm font-medium text-gray-700">
+                    {project.uniqueId || "N/A"}
+                  </td>
                   <td className="py-4 px-6">
                     <button
                       onClick={() => handleNavigateToTestCases(project)}
                       className="text-left w-full font-medium text-gray-900 hover:text-blue-600"
                     >
-                      {project.title || 'Untitled'}
+                      {project.title || "Untitled"}
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {projects.length === 0 && <div className="text-center py-12 text-gray-500">No projects found.</div>}
+          {projects.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              No projects found.
+            </div>
+          )}
         </div>
       </div>
     </div>
