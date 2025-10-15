@@ -1,5 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
+const BACKEND_API_KEY = process.env.REACT_APP_BACKEND_API_KEY;
+
+// Check if the key is available and throw an error if not
+if (!BACKEND_API_KEY) {
+  throw new Error(
+    "Missing API Key! Please check your .env file and build config."
+  );
+}
 
 export const Projects = () => {
   const [projects, setProjects] = useState([]);
@@ -9,7 +18,7 @@ export const Projects = () => {
   const BASE_URL = "http://localhost:3100";
   const AUTH_HEADER = {
     "Content-Type": "application/json",
-    Authorization: "ApiKey tk_dev_TTsb6ZZ5FTLpaSp3b5oAjV6COz1LFvyNdDKssFztc2g",
+    Authorization: `ApiKey ${BACKEND_API_KEY}`,
   };
 
   // Fetch projects from API only (no fallback)
@@ -17,8 +26,8 @@ export const Projects = () => {
     const fetchProjects = async () => {
       try {
         const projectsRes = await fetch(`${BASE_URL}/api/projects?page=1&page_size=20`, {
-          method: "GET",
-          headers: AUTH_HEADER,
+            method: "GET",
+            headers: AUTH_HEADER,
         });
         if (!projectsRes.ok) throw new Error('Failed to fetch');
         const projectsData = await projectsRes.json();
@@ -27,7 +36,7 @@ export const Projects = () => {
           .filter(p => !p.deleted_at)
           .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         const mappedProjects = sortedProjects.map((p, index) => ({
-          id: p.id || '',
+          id: p.id || "",
           uniqueId: index + 1,
           title: p.name || 'Untitled',
         }));
@@ -74,7 +83,7 @@ export const Projects = () => {
                 <tr key={project.id} className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="py-4 px-6 text-sm font-medium text-gray-700">{project.uniqueId || 'N/A'}</td>
                   <td className="py-4 px-6">
-                    <button 
+                    <button
                       onClick={() => handleNavigateToTestCases(project)}
                       className="text-left w-full font-medium text-gray-900 hover:text-blue-600"
                     >
