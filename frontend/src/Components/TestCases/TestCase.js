@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Folder } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Folder } from "lucide-react";
 
 const BACKEND_API_KEY = process.env.REACT_APP_BACKEND_API_KEY;
- 
+
 // Check if the key is available and throw an error if not
 if (!BACKEND_API_KEY) {
   throw new Error(
@@ -13,7 +13,7 @@ if (!BACKEND_API_KEY) {
 export const TestCase = () => {
   const [folderData, setFolderData] = useState([]);
   const [projectsData, setProjectsData] = useState([]);
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState("");
   const BASE_URL = "http://localhost:3100";
   const AUTH_HEADER = {
     "Content-Type": "application/json",
@@ -24,7 +24,7 @@ export const TestCase = () => {
     const fetchProjects = async () => {
       try {
         const projectsRes = await fetch(
-          `${BASE_URL}/api/projects?page=1&page_size=20&search=Demo`,
+          `${BASE_URL}/api/projects?page=1&page_size=20`,
           {
             method: "GET",
             headers: AUTH_HEADER,
@@ -111,7 +111,9 @@ export const TestCase = () => {
 
       <div className="flex flex-col container mx-auto p-6 gap-2">
         <div className="w-1/4 bg-white rounded-lg shadow-sm border p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Select Project</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">
+            Select Project
+          </h3>
           <select
             className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={selectedProjectId}
@@ -126,7 +128,9 @@ export const TestCase = () => {
           </select>
         </div>
         <div className="w-1/4 bg-white rounded-lg shadow-sm border p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Folder Structure</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">
+            Folder Structure
+          </h3>
           <div className="space-y-1">
             {folderData.length > 0 ? (
               renderFolderTree()
