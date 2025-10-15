@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+const BACKEND_API_KEY = process.env.REACT_APP_BACKEND_API_KEY;
+ 
+// Check if the key is available and throw an error if not
+if (!BACKEND_API_KEY) {
+  throw new Error(
+    "Missing API Key! Please check your .env file and build config."
+  );
+}
+
 
 export const Projects = () => {
   const [projects, setProjects] = useState([]);
@@ -9,7 +18,7 @@ export const Projects = () => {
   const BASE_URL = "http://localhost:3100";
   const AUTH_HEADER = {
     "Content-Type": "application/json",
-    Authorization: "ApiKey tk_dev_TTsb6ZZ5FTLpaSp3b5oAjV6COz1LFvyNdDKssFztc2g",
+    Authorization: `ApiKey ${BACKEND_API_KEY}`,
   };
 
   // Fetch projects from API only (no fallback)
