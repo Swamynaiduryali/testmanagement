@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import {
   BrowserRouter as Router,
@@ -12,6 +12,7 @@ import { TestRun } from "./Components/TestRuns/TestRun";
 import { TestPlan } from "./Components/TestPlans/TestPlan";
 import { Projects } from "./Components/Projects/Projects";
 import { CreateTestCase } from "./Components/CreateTestCases/CreateTestCase";
+import { get } from "./APICRUD/apiClient";
 
 const menuItems = [
   { name: "Projects", icon: "mdi:chart-bar", path: "/projects" },
@@ -32,6 +33,11 @@ const menuItems = [
 
 export const App = () => {
   const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    get("/api/health")
+      .then(() => console.log("✅ Backend connected successfully!"))
+      .catch((err) => console.error("❌ Backend connection failed:", err));
+  }, []);
 
   return (
     <Router>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { get } from "../../APICRUD/apiClient";
 
 const BACKEND_API_KEY = process.env.REACT_APP_BACKEND_API_KEY;
 
@@ -25,15 +26,9 @@ export const Projects = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const projectsRes = await fetch(
-          `${BASE_URL}/api/projects?page=1&page_size=20`,
-          {
-            method: "GET",
-            headers: AUTH_HEADER,
-          }
-        );
-        if (!projectsRes.ok) throw new Error("Failed to fetch");
-        const projectsData = await projectsRes.json();
+        // 1. Call 'get' which now returns the raw Response object
+        const projectsRes = await get("/api/projects?page=1&page_size=20"); // 2. Handle the JSON parsing here, followed by all your processing
+        const projectsData = await projectsRes.json(); // <-- Handled here // 3. Your specific filtering, sorting, and mapping logic goes here:
         const rawProjects = projectsData.data || [];
         const sortedProjects = rawProjects
           .filter((p) => !p.deleted_at)
@@ -43,10 +38,11 @@ export const Projects = () => {
           uniqueId: index + 1,
           title: p.name || "Untitled",
         }));
+
         setProjects(mappedProjects);
       } catch (err) {
         console.error("Error:", err);
-        setProjects([]); // Empty on error
+        setProjects([]);
       } finally {
         setLoading(false);
       }

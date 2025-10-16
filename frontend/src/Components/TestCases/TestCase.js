@@ -1,15 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom"; // <-- We need this
 import { Folder } from "lucide-react";
-
-// --- API Key setup remains correct (using process.env) ---
-const BACKEND_API_KEY = process.env.REACT_APP_BACKEND_API_KEY;
-
-if (!BACKEND_API_KEY) {
-  throw new Error(
-    "Missing API Key! Please check your .env file and build config."
-  );
-}
+import { get } from "../../APICRUD/apiClient";
 
 export const TestCase = () => {
   // --- Get the passed data from the navigation ---
@@ -21,32 +13,16 @@ export const TestCase = () => {
   // --- Start with the ID passed from the Projects screen ---
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId);
 
-  const BASE_URL = "http://localhost:3100";
-  const AUTH_HEADER = {
-    "Content-Type": "application/json",
-    Authorization: `ApiKey ${BACKEND_API_KEY}`,
-  };
-
   // 1. Fetch Projects (This is only needed to fill the dropdown list)
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const projectsRes = await fetch(
-          `${BASE_URL}/api/projects?page=1&page_size=20`,
-          {
-            method: "GET",
-            headers: AUTH_HEADER,
-          }
-        );
-        if (!projectsRes.ok) {
-          throw new Error("Failed to fetch projects");
-        }
+        const projectsRes = await get("/api/projects?page=1&page_size=20");
         const projectsData = await projectsRes.json();
         const projectsList = projectsData.data;
         setProjectsData(projectsList);
-        console.log("All Projects:", projectsList);
       } catch (error) {
-        console.log("Project Fetch Error:", error);
+        console.log("Project Fetch Error:", error.message || error);
       }
     };
 
@@ -63,24 +39,21 @@ export const TestCase = () => {
       }
 
       try {
-        const foldersRes = await fetch(
-          `${BASE_URL}/api/projects/${selectedProjectId}/folders`,
-          {
-            method: "GET",
-            headers: AUTH_HEADER,
-          }
-        );
-        if (!foldersRes.ok) {
-          throw new Error("Failed to fetch folders");
-        }
+        const endpoint = `/api/projects/${selectedProjectId}/folders`;
+
+        // Use the common 'get' function which returns the raw Response
+        const foldersRes = await get(endpoint);
+
+        // Handle the JSON parsing here
         const foldersData = await foldersRes.json();
+
         setFolderData(foldersData);
         console.log(
           "Folders for Project ID " + selectedProjectId + ":",
           foldersData
         );
       } catch (error) {
-        console.log("Folder Fetch Error:", error);
+        console.log("Folder Fetch Error:", error.message || error);
         setFolderData([]);
       }
     };
