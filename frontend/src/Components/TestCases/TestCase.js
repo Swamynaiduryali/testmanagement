@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom"; // <-- We need this
 import { Folder } from "lucide-react";
 import { get } from "../../APICRUD/apiClient";
+import { FolderTestCase } from "./FolderTestCase";
 
 export const TestCase = () => {
   // --- Get the passed data from the navigation ---
@@ -12,6 +13,12 @@ export const TestCase = () => {
   const [projectsData, setProjectsData] = useState([]);
   // --- Start with the ID passed from the Projects screen ---
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId);
+
+  const [selectedFolder, setSelectedFolder] = useState(null);
+
+  const handleSelectedFolder = (folder) => {
+    setSelectedFolder(folder);
+  };
 
   // 1. Fetch Projects (This is only needed to fill the dropdown list)
   useEffect(() => {
@@ -48,12 +55,7 @@ export const TestCase = () => {
         const foldersData = await foldersRes.json();
 
         setFolderData(foldersData);
-        console.log(
-          "Folders for Project ID " + selectedProjectId + ":",
-          foldersData
-        );
       } catch (error) {
-        console.log("Folder Fetch Error:", error.message || error);
         setFolderData([]);
       }
     };
@@ -67,6 +69,7 @@ export const TestCase = () => {
       <div
         key={folder.id}
         className="flex items-center py-2 px-3 hover:bg-blue-50 cursor-pointer rounded"
+        onClick={() => handleSelectedFolder(folder)}
       >
         <Folder className="w-4 h-4 mr-2 text-blue-500" />
         <span className="text-sm text-gray-700">{folder.name}</span>
@@ -128,10 +131,7 @@ export const TestCase = () => {
 
         {/* Right column for Test Cases (placeholder) */}
         <div className="w-3/4 bg-white rounded-lg shadow-sm border p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">
-            Test Case Details
-          </h3>
-          <p className="text-gray-500">Content for test cases will go here.</p>
+          <FolderTestCase selectedFolder={selectedFolder} />
         </div>
       </div>
     </div>
