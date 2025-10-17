@@ -67,4 +67,6 @@ export const post = (endpoint, body) => apiRequest(endpoint, "POST", body);
 
 export const put = (endpoint, body) => apiRequest(endpoint, "PUT", body);
 
+export const patch = (endpoint, body) => apiRequest(endpoint, "PATCH", body);
+
 export const del = (endpoint) => apiRequest(endpoint, "DELETE");

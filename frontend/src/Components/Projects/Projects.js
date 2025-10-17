@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { get, post, apiRequest, del } from "../../APICRUD/apiClient";
+import { get, post, del, patch } from "../../APICRUD/apiClient";
 import { Modalpopup } from "../../CommonComponents/Modalpopup";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
@@ -161,7 +161,7 @@ export const Projects = () => {
     try {
       const endpoint = `/api/projects/${currentProject.id}`;
       const body = { name: newProjectName };
-      const editRes = await apiRequest(endpoint, "PATCH", body);
+      const editRes = await patch(endpoint, body);
       if (!editRes.ok) throw new Error("Failed to edit");
       await fetchProjects();
       closeEditModal(); // Use the new close function
