@@ -7,7 +7,6 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
-import Typography from "@mui/material/Typography";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   // "& .MuiDialogContent-root": {
@@ -29,7 +28,6 @@ export const Modalpopup = ({
   height,
   padding,
 }) => {
-  console.log(padding);
   return (
     <React.Fragment>
       <BootstrapDialog
@@ -39,9 +37,9 @@ export const Modalpopup = ({
         sx={{
           "& .MuiPaper-root": {
             width: width,
-            maxWidth: "800px",
+            maxWidth: "1400px",
             height: height,
-            maxHeight: "800px",
+            maxHeight: "700px",
           },
         }} // Corrected syntax
       >
@@ -61,7 +59,9 @@ export const Modalpopup = ({
           <CloseIcon />
         </IconButton>
         <DialogContent sx={{ padding: padding }} dividers>
-          <Typography gutterBottom>{content}</Typography>
+          {/* <div>{content}</div> */}
+          {content}
+          {/* <Typography gutterBottom>{content}</Typography> */}
         </DialogContent>
         {buttons && (
           <DialogActions>

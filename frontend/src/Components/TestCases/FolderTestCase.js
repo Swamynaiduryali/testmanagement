@@ -1,38 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { get } from "../../APICRUD/apiClient";
+import { CommonButton } from "../../CommonComponents/Button";
 
-export const FolderTestCase = ({ selectedFolder }) => {
-  const [folderTestCases, setFolderTestCases] = useState(null);
-
-  // Get the ID/Project ID, or use a safe default if the folder hasn't been selected yet
-  const id = selectedFolder?.id;
-  const project_id = selectedFolder?.project_id;
-  const name = selectedFolder?.name;
-
-  // ✅ 2. useEffect is now safe and runs when dependencies change
-  useEffect(() => {
-    const fetchFolderTestCases = async () => {
-      // Check inside the effect if we have valid IDs before fetching
-      if (!id || !project_id) {
-        setFolderTestCases(null); // Clear state if IDs are missing
-        return;
-      }
-
-      try {
-        const folderTestCasesRes = await get(
-          `/api/projects/${project_id}/test-cases?folder_id=${id}&page=1&page_size=20`
-        );
-        const folderTestCasesJson = await folderTestCasesRes.json();
-        const folderTestCasesData = folderTestCasesJson.data;
-        setFolderTestCases(folderTestCasesData);
-      } catch (error) {
-        setFolderTestCases(null);
-        throw new Error("Test Case Fetch Error:", error);
-      }
-    };
-    fetchFolderTestCases();
-  }, [id, project_id]);
-
+export const FolderTestCase = ({
+  selectedFolder,
+  folderTestCases,
+  handleEditTestCase,
+}) => {
   if (!selectedFolder) {
     return (
       <div className="text-center py-12 text-gray-500">
@@ -41,6 +13,7 @@ export const FolderTestCase = ({ selectedFolder }) => {
     );
   }
 
+  const name = selectedFolder.name;
   const hasTestCases = folderTestCases?.length > 0;
 
   return (
@@ -72,6 +45,9 @@ export const FolderTestCase = ({ selectedFolder }) => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Owner
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -94,6 +70,15 @@ export const FolderTestCase = ({ selectedFolder }) => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {testCase.owner?.display_name || "N/A"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <CommonButton
+                      className="text-blue-500 hover:underline mr-4"
+                      onClick={() => handleEditTestCase(testCase)}
+                    >
+                      Edit
+                    </CommonButton>
+                    {/* delete will be added next */}
                   </td>
                 </tr>
               ))}
