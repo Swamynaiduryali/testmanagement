@@ -1,34 +1,54 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+/* ---------- Projects.tsx ---------- */
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { get, post, del, patch } from "../../APICRUD/apiClient";
 import { Modalpopup } from "../../CommonComponents/Modalpopup";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 const BACKEND_API_KEY = process.env.REACT_APP_BACKEND_API_KEY;
-
-// Check if the key is available and throw an error if not
 if (!BACKEND_API_KEY) {
-  throw new Error(
-    "Missing API Key! Please check your .env file and build config."
-  );
+  throw new Error("Missing API Key!");
 }
 
+const PAGE_SIZE = 20;
+
 export const Projects = () => {
-  const [projects, setProjects] = useState([]);
+  /* ---------- State ---------- */
+  const [currentPageData, setCurrentPageData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]); 
+  const [searchQuery, setSearchQuery] = useState(""); 
+  const [allProjects, setAllProjects] = useState([]); // store all pages
+  const [globalSearchActive, setGlobalSearchActive] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showMenuFor, setShowMenuFor] = useState(null); // Track open menu
-  const [showCreateModal, setShowCreateModal] = useState(false); // Create popup
-  const [showEditModal, setShowEditModal] = useState(false); // Edit popup
-  const [showDeleteModal, setShowDeleteModal] = useState(false); // Delete popup
-  const [currentProject, setCurrentProject] = useState(null); // For edit/delete
-  const [newProjectName, setNewProjectName] = useState(""); // Create/Edit input
-  const [actionLoading, setActionLoading] = useState(false); // Loading for mutations
-  const menuRefs = useRef({}); // Refs for each menu to handle outside clicks
+  const [showMenuFor, setShowMenuFor] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [currentProject, setCurrentProject] = useState(null);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+ const [pageSize, setPageSize] = useState()
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProjects, setTotalProjects] = useState(0);
+
+  // NEW: Controlled input for "Go to page"
+  const [pageInput, setPageInput] = useState("");
+
+  const menuRefs = useRef({});
   const navigate = useNavigate();
 
-  // Date formatter for readability
+  /* ---------- Helpers ---------- */
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     return new Intl.DateTimeFormat("en-US", {
@@ -38,136 +58,158 @@ export const Projects = () => {
     }).format(new Date(dateString));
   };
 
-  // Refetch function for reuse after mutations (using the new 'get' from apiClient)
-  const fetchProjects = useCallback(async () => {
-    try {
-      setLoading(true);
-      const projectsRes = await get("/api/projects?page=1&page_size=20");
-      const projectsData = await projectsRes.json();
+  /* ---------- Fetch ONE page ---------- */
+  const fetchPage = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const url = `/api/projects?page=${page}&page_size=${PAGE_SIZE}`;
+        const res = await get(url);
+        const json = await res.json();
 
-      const rawProjects = projectsData.data || [];
+        const raw = json.data || [];
+        const backendPage = json.page || page;
+        const backendTotal = json.total || 0;
+        const backendTotalPages = json.totalPages || 1;
 
-      const sortedProjects = rawProjects
-        .filter((p) => !p.deleted_at)
-        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const sorted = raw
+          .filter((p) => !p.deleted_at)
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-      const mappedProjects = sortedProjects.map((p, index) => ({
-        id: p.id || "",
-        uniqueId: index + 1,
-        title: p.name || "Untitled",
-        createdAt: p.created_at ?? null,
-      }));
-      setProjects(mappedProjects);
-    } catch (err) {
-      setProjects([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        const startIdx = (backendPage - 1) * PAGE_SIZE;
+        const mapped = sorted.map((p, idx) => ({
+          id: p.id,
+          uniqueId: startIdx + idx + 1,
+          title: p.name || "Untitled",
+          createdAt: p.created_at ?? null,
+        }));
 
-  // Initial fetch
+        setCurrentPageData(mapped);
+        setFilteredData(mapped);
+        setTotalProjects(backendTotal);
+        setTotalPages(backendTotalPages);
+        setCurrentPage(backendPage);
+      } catch (err) {
+        console.error("fetchPage error:", err);
+        setCurrentPageData([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  /* ---------- Initial load ---------- */
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    fetchPage(1);
+  }, [fetchPage]);
 
-  // Close menu if clicking outside
+  /* ---------- Pagination change ---------- */
   useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (
-        showMenuFor &&
-        menuRefs.current[showMenuFor] &&
-        !menuRefs.current[showMenuFor].contains(e.target)
-      ) {
-        setShowMenuFor(null);
+    if (!globalSearchActive) fetchPage(currentPage);
+  }, [currentPage, fetchPage, globalSearchActive]);
+
+  /* ---------- Cross-page Search Logic ---------- */
+  useEffect(() => {
+    const handleSearch = async () => {
+      const query = searchQuery.trim().toLowerCase();
+
+      if (!query) {
+        setFilteredData(currentPageData);
+        setGlobalSearchActive(false);
+        return;
+      }
+
+      if (allProjects.length === 0) {
+        try {
+          setLoading(true);
+          const allData = [];
+          let page = 1;
+          let keepFetching = true;
+
+          while (keepFetching) {
+            const res = await get(`/api/projects?page=${page}&page_size=${PAGE_SIZE}`);
+            const json = await res.json();
+            const raw = json.data || [];
+
+            if (raw.length === 0) {
+              keepFetching = false;
+            } else {
+              const mapped = raw
+                .filter((p) => !p.deleted_at)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .map((p) => ({
+                  id: p.id,
+                  title: p.name || "Untitled",
+                  createdAt: p.created_at ?? null,
+                }));
+              allData.push(...mapped);
+              page++;
+              keepFetching = page <= (json.totalPages || 1);
+            }
+          }
+
+          setAllProjects(allData);
+          const filtered = allData.filter((p) =>
+            p.title.toLowerCase().includes(query)
+          );
+          setFilteredData(filtered);
+          setGlobalSearchActive(true);
+        } catch (err) {
+          console.error("Global search error:", err);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        const filtered = allProjects.filter((p) =>
+          p.title.toLowerCase().includes(query)
+        );
+        setFilteredData(filtered);
+        setGlobalSearchActive(true);
       }
     };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [showMenuFor]);
 
-  // Navigate with DB ID
-  const handleNavigateToTestCases = (project) => {
-    navigate("/test-cases", {
-      state: { projectDbId: project.id, projectTitle: project.title },
-    });
+    handleSearch();
+  }, [searchQuery]);
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
   };
 
-  // Toggle menu
-  const toggleMenu = (e, projectId) => {
-    e.stopPropagation();
-    setShowMenuFor(showMenuFor === projectId ? null : projectId);
+  /* ---------- Refresh after mutation ---------- */
+  const refresh = async (pageToShow = 1) => {
+    setAllProjects([]);
+    setGlobalSearchActive(false);
+    await fetchPage(pageToShow);
   };
 
-  // --- Modal Open/Close Logic ---
-
-  const openCreateModal = () => {
-    setNewProjectName("");
-    setShowCreateModal(true);
-  };
-
-  const closeCreateModal = () => {
-    setShowCreateModal(false);
-    setNewProjectName("");
-  };
-
-  const openEditModal = (project) => {
-    setShowMenuFor(null);
-    setCurrentProject(project);
-    setNewProjectName(project.title);
-    setShowEditModal(true);
-  };
-
-  const closeEditModal = () => {
-    setShowEditModal(false);
-    setNewProjectName("");
-    setCurrentProject(null);
-  };
-
-  const openDeleteModal = (project) => {
-    setShowMenuFor(null);
-    setCurrentProject(project);
-    setShowDeleteModal(true);
-  };
-
-  const closeDeleteModal = () => {
-    setShowDeleteModal(false);
-    setCurrentProject(null);
-  };
-
-  // --- API Handlers (Unchanged) ---
-
+  /* ---------- CRUD ---------- */
   const handleCreateSubmit = async () => {
     if (!newProjectName.trim()) return;
     setActionLoading(true);
     try {
-      const endpoint = "/api/projects";
-      const body = { name: newProjectName };
-      const createRes = await post(endpoint, body);
-      if (!createRes.ok) throw new Error("Failed to create");
-      await fetchProjects();
-      closeCreateModal(); // Use the new close function
-    } catch (err) {
-      console.error("Create error:", err);
+      await post("/api/projects", { name: newProjectName });
+      setCurrentPage(1);
+      await refresh(1);
+      closeCreateModal();
+    } catch (e) {
       alert("Failed to create project.");
+      console.error(e);
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleEditSubmit = async () => {
-    if (!newProjectName.trim() || newProjectName === currentProject.title)
-      return;
+    if (!newProjectName.trim() || newProjectName === currentProject.title) return;
     setActionLoading(true);
     try {
-      const endpoint = `/api/projects/${currentProject.id}`;
-      const body = { name: newProjectName };
-      const editRes = await patch(endpoint, body);
-      if (!editRes.ok) throw new Error("Failed to edit");
-      await fetchProjects();
-      closeEditModal(); // Use the new close function
-    } catch (err) {
-      console.error("Edit error:", err);
+      await patch(`/api/projects/${currentProject.id}`, { name: newProjectName });
+      await refresh(currentPage);
+      closeEditModal();
+    } catch (e) {
       alert("Failed to edit project.");
+      console.error(e);
     } finally {
       setActionLoading(false);
     }
@@ -176,212 +218,194 @@ export const Projects = () => {
   const handleDeleteConfirm = async () => {
     setActionLoading(true);
     try {
-      const endpoint = `/api/projects/${currentProject.id}`;
-      const deleteRes = await del(endpoint);
-      if (!deleteRes.ok) throw new Error("Failed to delete");
-      await fetchProjects();
-      closeDeleteModal(); // Use the new close function
-    } catch (err) {
-      console.error("Delete error:", err);
+      await del(`/api/projects/${currentProject.id}`);
+      const check = await get(`/api/projects?page=${currentPage}&page_size=${PAGE_SIZE}`);
+      const j = await check.json();
+      const newTotalPages = j.totalPages || 1;
+      const pageToShow = currentPage > newTotalPages ? newTotalPages : currentPage;
+      await refresh(pageToShow);
+      closeDeleteModal();
+    } catch (e) {
       alert("Failed to delete project.");
+      console.error(e);
     } finally {
       setActionLoading(false);
     }
   };
 
-  // --- Render Logic ---
+  /* ---------- Pagination helpers ---------- */
+  const goPrev = () => {
+    if (currentPage > 1) {
+      const prev = currentPage - 1;
+      setCurrentPage(prev);
+      // fetchPage will be triggered by useEffect
+    }
+  };
 
-  // 🎯 Modal Content and Buttons Helper Components
+  const goNext = () => {
+    if (currentPage < totalPages) {
+      const next = currentPage + 1;
+      setCurrentPage(next);
+    }
+  };
 
-  const CreateProjectContent = (
-    <TextField
-      fullWidth
-      variant="outlined"
-      label="Project Name"
-      value={newProjectName}
-      onChange={(e) => setNewProjectName(e.target.value)}
-      placeholder="Enter project name"
-      disabled={actionLoading}
-    />
-  );
+  const goToPage = (page) => {
+    const p = Math.max(1, Math.min(totalPages, page));
+    setCurrentPage(p);
+    setPageInput(""); // Clear input after navigation
+  };
 
-  const CreateProjectButtons = [
-    <Button
-      key="cancel"
-      onClick={closeCreateModal}
-      disabled={actionLoading}
-      color="inherit"
-      sx={{ border: "1px solid black" }}
-    >
-      Cancel
-    </Button>,
-    <Button
-      key="create"
-      onClick={handleCreateSubmit}
-      disabled={actionLoading || !newProjectName.trim()}
-      variant="contained"
-      color="primary"
-      sx={{ border: "1px solid black" }}
-    >
-      {actionLoading ? "Creating..." : "Create"}
-    </Button>,
-  ];
+  /* ---------- NEW: Handle Go to Page Input ---------- */
+  const handleGoToPage = () => {
+    const num = parseInt(pageInput, 10);
+    if (!isNaN(num) && num >= 1 && num <= totalPages) {
+      goToPage(num);
+    }
+  };
 
-  const EditProjectContent = (
-    <TextField
-      fullWidth
-      variant="outlined"
-      label="New Project Name"
-      value={newProjectName}
-      onChange={(e) => setNewProjectName(e.target.value)}
-      placeholder="Enter new project name"
-      disabled={actionLoading}
-    />
-  );
+  const handlePageInputKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleGoToPage();
+    }
+  };
 
-  const EditProjectButtons = [
-    <Button
-      key="cancel"
-      onClick={closeEditModal}
-      disabled={actionLoading}
-      color="inherit"
-      sx={{ border: "1px solid black" }}
-    >
-      Cancel
-    </Button>,
-    <Button
-      key="save"
-      onClick={handleEditSubmit}
-      disabled={
-        actionLoading ||
-        !newProjectName.trim() ||
-        newProjectName === currentProject?.title
+  /* ---------- Modal helpers ---------- */
+  const openCreateModal = () => { setNewProjectName(""); setShowCreateModal(true); };
+  const closeCreateModal = () => { setShowCreateModal(false); setNewProjectName(""); };
+  const closeEditModal = () => { setShowEditModal(false); setNewProjectName(""); setCurrentProject(null); };
+  const openEditModal = (proj) => {
+    setShowMenuFor(null);
+    setCurrentProject(proj);
+    setNewProjectName(proj.title);
+    setShowEditModal(true);
+  };
+  const openDeleteModal = (proj) => {
+    setShowMenuFor(null);
+    setCurrentProject(proj);
+    setShowDeleteModal(true);
+  };
+  const closeDeleteModal = () => { setShowDeleteModal(false); setCurrentProject(null); };
+
+  /* ---------- Outside click for menu ---------- */
+  useEffect(() => {
+    const handler = (e) => {
+      if (showMenuFor && menuRefs.current[showMenuFor] && !menuRefs.current[showMenuFor].contains(e.target)) {
+        setShowMenuFor(null);
       }
-      variant="contained"
-      color="primary"
-      sx={{ border: "1px solid black" }}
-    >
-      {actionLoading ? "Saving..." : "Save"}
-    </Button>,
-  ];
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMenuFor]);
 
-  const DeleteProjectContent = (
-    <Typography variant="body2" color="text.secondary">
-      Are you sure you want to delete "
-      <span style={{ fontWeight: 600, color: "#1f2937" }}>
-        {currentProject?.title}
-      </span>
-      "? This action cannot be undone.
-    </Typography>
-  );
+  /* ---------- Navigation ---------- */
+  const handleNavigateToTestCases = (proj) => {
+    navigate("/test-cases", {
+      state: { projectDbId: proj.id, projectTitle: proj.title, page: currentPage, page_size: pageSize,totalProjects, },
+    });
+  };
+  
+  const toggleMenu = (e, id) => {
+    e.stopPropagation();
+    setShowMenuFor((prev) => (prev === id ? null : id));
+  };
 
-  const DeleteProjectButtons = [
-    <Button
-      key="cancel"
-      onClick={closeDeleteModal}
-      disabled={actionLoading}
-      color="inherit"
-      sx={{ border: "1px solid black" }}
-    >
-      Cancel
-    </Button>,
-    <Button
-      key="delete"
-      onClick={handleDeleteConfirm}
-      disabled={actionLoading}
-      variant="contained"
-      sx={{
-        backgroundColor: "gray",
-        color: "white",
-        "&:hover": {
-          backgroundColor: "red",
-          opacity: 1,
-        },
-      }}
-    >
-      {actionLoading ? "Deleting..." : "Delete"}
-    </Button>,
-  ];
+  /* ---------- Pagination UI ---------- */
+  const getPaginationButtons = () => {
+    const btns = [];
+    const max = 5;
+    if (totalPages <= max) {
+      for (let i = 1; i <= totalPages; i++) btns.push(i);
+    } else {
+      btns.push(1);
+      if (currentPage > 3) btns.push("...");
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) btns.push(i);
+      if (currentPage < totalPages - 2) btns.push("...");
+      btns.push(totalPages);
+    }
+    return btns;
+  };
 
-  if (loading)
-    return <div className="text-center py-12 text-gray-500">Loading...</div>;
+  /* ---------- Render ---------- */
+  if (loading) {
+    return <div className="text-center py-12 text-gray-500">Loading projects…</div>;
+  }
+
+  const noResults = filteredData.length === 0;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header with Create Button */}
+
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-gray-900">Projects</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Projects</h1>
+
+          <div className="flex items-center gap-3">
+            <TextField
+              size="small"
+              variant="outlined"
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              sx={{ width: 280, backgroundColor: "white" }}
+            />
+
+            <button
+              onClick={openCreateModal}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Create Project
+            </button>
           </div>
-          <button
-            onClick={openCreateModal}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-          >
-            Create Project
-          </button>
         </div>
 
-        {/* Table with updated columns (only CREATED AT) + Actions */}
-        <div className="bg-white border border-gray-200 rounded-lg">
+        {/* Table */}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-visible">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700 w-24">
-                  ID
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700">
-                  PROJECT NAME
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700">
-                  CREATED AT
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700 w-20">
-                  ACTIONS
-                </th>
+                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700 w-24">ID</th>
+                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700">PROJECT NAME</th>
+                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700">CREATED AT</th>
+                <th className="text-left py-3 px-6 text-sm font-semibold text-gray-700 w-20">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
-              {projects.map((project) => (
-                <tr
-                  key={project.id}
-                  className="border-b border-gray-200 hover:bg-gray-50 relative"
-                >
-                  <td className="py-4 px-6 text-sm font-medium text-gray-700">
-                    {project.uniqueId || "N/A"}
-                  </td>
+              {filteredData.map((p, index) => (
+                <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50">
+                  <td className="py-4 px-6 text-sm font-medium text-gray-700">{index + 1}</td>
                   <td className="py-4 px-6">
                     <button
-                      onClick={() => handleNavigateToTestCases(project)}
+                      onClick={() => handleNavigateToTestCases(p)}
                       className="text-left w-full font-medium text-gray-900 hover:text-blue-600"
                     >
-                      {project.title || "Untitled"}
+                      {p.title}
                     </button>
                   </td>
-                  <td className="py-4 px-6 text-sm text-gray-600">
-                    {formatDate(project.createdAt)}
-                  </td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 text-sm text-gray-600">{formatDate(p.createdAt)}</td>
+                  <td className="py-4 px-6 relative">
                     <button
-                      onClick={(e) => toggleMenu(e, project.id)}
+                      onClick={(e) => toggleMenu(e, p.id)}
                       className="text-gray-500 hover:text-gray-700"
                     >
-                      ...
+                      …
                     </button>
-                    {showMenuFor === project.id && (
+                    {showMenuFor === p.id && (
                       <div
-                        ref={(el) => (menuRefs.current[project.id] = el)}
-                        className="absolute right-0 top-0 mt-10 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-50"
+                        ref={(el) => (menuRefs.current[p.id] = el)}
+                        className="absolute right-4 top-full mt-1 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-50"
                       >
                         <button
-                          onClick={() => openEditModal(project)}
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => openEditModal(p)}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-md"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => openDeleteModal(project)}
-                          className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                          onClick={() => openDeleteModal(p)}
+                          className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 rounded-b-md"
                         >
                           Delete
                         </button>
@@ -392,44 +416,186 @@ export const Projects = () => {
               ))}
             </tbody>
           </table>
-          {projects.length === 0 && (
+
+          {noResults && (
             <div className="text-center py-12 text-gray-500">
               No projects found.
             </div>
           )}
         </div>
+
+        {/* ========== PAGINATION WITH GO-TO-PAGE INPUT ========== */}
+        {totalPages > 1 && !globalSearchActive && !searchQuery.trim() && (
+          <div className="mt-8 flex flex-col items-center gap-4">
+            <div className="text-sm text-gray-600">
+              <span className="font-semibold">
+                Page {currentPage} of {totalPages}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={goPrev}
+                disabled={currentPage === 1}
+                className="p-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed"
+              >
+                <ChevronLeftIcon fontSize="small" />
+              </button>
+
+              <div className="flex gap-1">
+                {getPaginationButtons().map((b, i) => (
+                  <button
+                    key={i}
+                    onClick={() => b !== "..." && goToPage(b)}
+                    disabled={b === "..."}
+                    className={`px-3 py-2 rounded border text-sm font-medium transition-colors ${
+                      b === currentPage
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : b === "..."
+                        ? "border-gray-300 text-gray-400 cursor-default"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {b}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={goNext}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed"
+              >
+                <ChevronRightIcon fontSize="small" />
+              </button>
+            </div>
+
+            {/* GO TO PAGE INPUT */}
+            <div className="flex items-center gap-2">
+              <TextField
+                size="small"
+                placeholder="Page"
+                type="number"
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                onKeyDown={handlePageInputKeyDown}
+                inputProps={{
+                  min: 1,
+                  max: totalPages,
+                  style: { textAlign: "center" },
+                }}
+                sx={{ width: 70 }}
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={handleGoToPage}
+                disabled={
+                  !pageInput ||
+                  isNaN(parseInt(pageInput, 10)) ||
+                  parseInt(pageInput, 10) < 1 ||
+                  parseInt(pageInput, 10) > totalPages
+                }
+                sx={{ textTransform: "none" }}
+              >
+                Go
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 🎯 Create Project Modal (Using Modalpopup) */}
+      {/* ---------- Modals ---------- */}
       <Modalpopup
         open={showCreateModal}
         onClose={closeCreateModal}
         header="Create Project"
-        content={CreateProjectContent}
-        buttons={CreateProjectButtons}
-        width="400px" // Adjusted for the input field
+        content={
+          <TextField
+            fullWidth
+            variant="outlined"
+            label="Project Name"
+            value={newProjectName}
+            onChange={(e) => setNewProjectName(e.target.value)}
+            placeholder="Enter project name"
+            disabled={actionLoading}
+          />
+        }
+        buttons={[
+          <Button key="c1" onClick={closeCreateModal} disabled={actionLoading} color="inherit">
+            Cancel
+          </Button>,
+          <Button
+            key="c2"
+            onClick={handleCreateSubmit}
+            disabled={actionLoading || !newProjectName.trim()}
+            variant="contained"
+            color="primary"
+          >
+            {actionLoading ? "Creating…" : "Create"}
+          </Button>,
+        ]}
+        width="400px"
         padding="20px"
       />
 
-      {/* 🎯 Edit Project Modal (Using Modalpopup) */}
       <Modalpopup
         open={showEditModal}
         onClose={closeEditModal}
         header="Edit Project"
-        content={EditProjectContent}
-        buttons={EditProjectButtons}
-        width="400px" // Adjusted for the input field
+        content={
+          <TextField
+            fullWidth
+            variant="outlined"
+            label="New Project Name"
+            value={newProjectName}
+            onChange={(e) => setNewProjectName(e.target.value)}
+            placeholder="Enter new name"
+            disabled={actionLoading}
+          />
+        }
+        buttons={[
+          <Button key="e1" onClick={closeEditModal} disabled={actionLoading} color="inherit">
+            Cancel
+          </Button>,
+          <Button
+            key="e2"
+            onClick={handleEditSubmit}
+            disabled={actionLoading || !newProjectName.trim() || newProjectName === currentProject?.title}
+            variant="contained"
+            color="primary"
+          >
+            {actionLoading ? "Saving…" : "Save"}
+          </Button>,
+        ]}
+        width="400px"
         padding="20px"
       />
 
-      {/* 🎯 Delete Confirmation Modal (Using Modalpopup) */}
       <Modalpopup
         open={showDeleteModal}
         onClose={closeDeleteModal}
         header="Confirm Delete"
-        content={DeleteProjectContent}
-        buttons={DeleteProjectButtons}
-        width="450px" // Slightly wider for text
+        content={
+          <Typography variant="body2" color="text.secondary">
+            Delete "<span style={{ fontWeight: 600 }}>{currentProject?.title}</span>"? This cannot be undone.
+          </Typography>
+        }
+        buttons={[
+          <Button key="d1" onClick={closeDeleteModal} disabled={actionLoading} color="inherit">
+            Cancel
+          </Button>,
+          <Button
+            key="d2"
+            onClick={handleDeleteConfirm}
+            disabled={actionLoading}
+            variant="contained"
+            sx={{ backgroundColor: "gray", color: "white", "&:hover": { backgroundColor: "red" } }}
+          >
+            {actionLoading ? "Deleting…" : "Delete"}
+          </Button>,
+        ]}
+        width="460px"
         padding="20px"
       />
     </div>
