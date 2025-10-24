@@ -44,7 +44,7 @@ export const TestCase = () => {
       owner: "OWNER1",
       state: "ACTIVE",
       priority: "LOW",
-      typeOfTestCase: "FUNCTIONAL",
+      type: "FUNCTIONAL",
       automation_status: "NOT_AUTOMATED",
     });
 
@@ -69,6 +69,7 @@ export const TestCase = () => {
   const onClose = () => {
     setOpenCreateTestCase((prev) => !prev);
     resetFormData();
+    setEditingTestCaseId(null);
   };
 
   // Steps data
@@ -89,7 +90,7 @@ export const TestCase = () => {
     owner: "OWNER1",
     state: "ACTIVE",
     priority: "LOW",
-    typeOfTestCase: "FUNCTIONAL",
+    type: "FUNCTIONAL",
     automation_status: "NOT_AUTOMATED",
   });
 
@@ -138,7 +139,6 @@ export const TestCase = () => {
           expectedResult: value.trim() ? "" : "Expected Result is Mandatory",
         };
       }
-
       newErrors.steps = stepErrors;
       return newErrors;
     });
@@ -217,6 +217,7 @@ export const TestCase = () => {
       title: formData.title,
       priority: formData.priority,
       state: formData.state,
+      type: formData.type,
       automation_status: formData.automation_status,
     };
 
@@ -230,10 +231,18 @@ export const TestCase = () => {
 
     try {
       if (editingTestCaseId) {
-        await patch(`/api/test-cases/${editingTestCaseId}`, detailsPayload);
-        await patch(`/api/test-cases/${editingTestCaseId}`, stepsPayload);
+        console.log(selectedFolder);
 
-        console.log("Test case updated successfully");
+        // ✅ Use selectedFolder.project_id instead of the whole object
+        await patch(
+          `/api/projects/${selectedFolder?.project_id}/test-cases/${editingTestCaseId}`,
+          detailsPayload
+        );
+
+        await patch(
+          `/api/projects/${selectedFolder?.project_id}/test-cases/${editingTestCaseId}`,
+          stepsPayload
+        );
       } else {
         const payload = {
           title: formData.title,
@@ -243,7 +252,7 @@ export const TestCase = () => {
           owner_id: GlobalOwnerId,
           state: formData.state,
           priority: formData.priority,
-          type: formData.typeOfTestCase,
+          type: formData.type,
           automation_status: formData.automation_status,
           steps: addStep.map((step, index) => ({
             index: index + 1,
@@ -280,22 +289,36 @@ export const TestCase = () => {
       owner: testCase.owner?.display_name || "OWNER1",
       state: testCase.state || "ACTIVE",
       priority: testCase.priority || "LOW",
-      typeOfTestCase: testCase.type || "FUNCTIONAL",
+      type: testCase.type || "FUNCTIONAL",
       automation_status: testCase.automation_status || "NOT_AUTOMATED",
     });
 
     try {
-      const res = await get(`/api/test-cases/${testCase.id}`);
+      const res = await get(
+        `/api/projects/${testCase.project_id}/test-cases?folder_id=${testCase.folder_id}&page=1&page_size=20`
+      );
+
       const json = await res.json();
-      const steps = json?.data?.steps || json?.steps || [];
+      console.log(json);
+
+      const selectedTestCase = json?.data?.find(
+        (item) => item.id === testCase.id
+      );
+
+      // Parse steps_json safely
+      const stepsData = selectedTestCase?.steps_json
+        ? JSON.parse(selectedTestCase.steps_json)
+        : [];
+
+      console.log(stepsData);
 
       setAddStep(
-        steps.length
-          ? steps.map((step, index) => ({
-              id: step.id || index + 1,
-              step: step.step || "",
-              expectedResult: step.expected || "",
-              actualResult: step.actual || "",
+        stepsData.length
+          ? stepsData.map((s, index) => ({
+              id: s.index || index + 1,
+              step: s.step || "",
+              expectedResult: s.expected || "",
+              actualResult: s.actual || "",
             }))
           : [
               {
@@ -320,6 +343,25 @@ export const TestCase = () => {
 
     setEditingTestCaseId(testCase.id);
     setOpenCreateTestCase(true);
+  };
+
+  // Delete test case
+  const handleDeleteTestCase = async (testCaseId, testCaseProjectId) => {
+    console.log(testCaseId, testCaseProjectId);
+    //later I want to implement an modalpopup here
+    if (!window.confirm("Are you sure you want to delete this test case?"))
+      return;
+
+    try {
+      await del(`/api/projects/${testCaseProjectId}/test-cases/${testCaseId}`);
+      alert("Test case deleted successfully!");
+
+      // Refresh the test cases list
+      await fetchFolderTestCases(selectedFolder);
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert("Failed to delete test case.");
+    }
   };
 
   // Fetch Projects
@@ -744,24 +786,19 @@ return (
           </div>
         </div>
 
-        {/* Right column for Test Cases */}
-        <div className="flex flex-col w-full">
-          <div className="w-full flex justify-end p-4">
-            <CommonButton
-              variant="contained"
-              bgColor={"green"}
-              onClick={() => onClose()}
-            >
-              Create
-            </CommonButton>
-          </div>
-          <div className="w-full bg-white rounded-lg shadow-sm border p-4">
-            <FolderTestCase
-              selectedFolder={selectedFolder}
-              folderTestCases={folderTestCases}
-              handleEditTestCase={handleEditTestCase}
-            />
-          </div>
+        {/* Right column for Test Cases (placeholder) */}
+        {/* Swamy Changes */}
+        <div className="w-full bg-white rounded-lg shadow-sm border p-4">
+        <FolderTestCase
+          selectedFolder={selectedFolder}
+          folderTestCases={folderTestCases}
+          handleEditTestCase={handleEditTestCase}
+          handleDeleteTestCase={handleDeleteTestCase}
+          handleCreateClick={() => {
+            setEditingTestCaseId(null);
+            onClose();
+          }}
+        />
         </div>
       </div>
 
@@ -771,7 +808,10 @@ return (
         onClose={onClose}
         height="700px"
         width="1200px"
-        header={<h1>Create Test Case</h1>}
+        //  ${selectedFolder?.name}
+        header={`${
+          editingTestCaseId ? "Edit Test Case: " : "Create Test Case: "
+        } ${selectedFolder?.name}`}
         content={
           <CreateTestCase
             addStep={addStep}

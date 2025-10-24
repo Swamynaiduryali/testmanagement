@@ -1,9 +1,12 @@
 import { CommonButton } from "../../CommonComponents/Button";
+import { PositionedMenu } from "../../CommonComponents/PositionedMenu";
 
 export const FolderTestCase = ({
   selectedFolder,
   folderTestCases,
   handleEditTestCase,
+  handleDeleteTestCase,
+  handleCreateClick,
 }) => {
   if (!selectedFolder) {
     return (
@@ -18,8 +21,29 @@ export const FolderTestCase = ({
 
   return (
     <div>
-      <h1 className="text-xl font-bold">{name}</h1>
-      <p>Total Test Cases: {folderTestCases?.length || 0}</p>
+      <div className="flex justify-between items-center mb-2">
+        {/* Left side: Heading */}
+        <div className="flex items-center">
+          <h1 className="text-xl font-bold">{name}</h1>
+        </div>
+
+        {/* Right side: Search + Create Button */}
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            className="border-2 rounded-md p-1 w-48"
+            placeholder="Search"
+          />
+          <CommonButton
+            variant="contained"
+            bgColor="green"
+            onClick={handleCreateClick}
+          >
+            Create
+          </CommonButton>
+        </div>
+      </div>
+
       {!hasTestCases ? (
         <div className="text-gray-500">No Test Cases exist in this folder.</div>
       ) : (
@@ -72,13 +96,24 @@ export const FolderTestCase = ({
                     {testCase.owner?.display_name || "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <CommonButton
-                      className="text-blue-500 hover:underline mr-4"
-                      onClick={() => handleEditTestCase(testCase)}
-                    >
-                      Edit
-                    </CommonButton>
-                    {/* delete will be added next */}
+                    <PositionedMenu
+                      actions={[
+                        {
+                          label: "Edit",
+                          icon: "mdi:pencil-outline",
+                          onClick: () => handleEditTestCase(testCase),
+                        },
+                        {
+                          label: "Delete",
+                          icon: "mdi:trash-outline",
+                          onClick: () =>
+                            handleDeleteTestCase(
+                              testCase.id,
+                              testCase.project_id
+                            ),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}
