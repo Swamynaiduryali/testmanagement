@@ -78,7 +78,9 @@ export const CreateTestCase = ({
                   </div>
                   {/* Step description */}
                   <div className="w-full flex flex-col">
-                    <label htmlFor={`step-${step.id}`}>Step</label>
+                    <label htmlFor={`step-${step.id}`}>
+                      Step<span style={{ color: "red" }}>*</span>
+                    </label>
                     <textarea
                       id={`step-${step.id}`}
                       value={step.step}
@@ -101,7 +103,7 @@ export const CreateTestCase = ({
                   {/* Expected Result */}
                   <div className="flex flex-col w-full">
                     <label htmlFor={`expectedResult-${step.id}`}>
-                      Expected Result
+                      Expected Result<span style={{ color: "red" }}>*</span>
                     </label>
                     <textarea
                       id={`expectedResult-${step.id}`}
@@ -195,7 +197,8 @@ export const CreateTestCase = ({
             onChange={handleInputChange}
           >
             <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
+            <option value="DRAFTE">DRAFT</option>
+            <option value="ARCHIVED">ARCHIVED</option>
           </select>
         </div>
         {/* Priority */}
@@ -210,6 +213,7 @@ export const CreateTestCase = ({
             className="border-2 border-gray-300 rounded-md p-2 w-full"
             onChange={handleInputChange}
           >
+            <option value="CRITICAL">CRITICAL</option>
             <option value="HIGH">HIGH</option>
             <option value="MEDIUM">MEDIUM</option>
             <option value="LOW">LOW</option>
@@ -217,34 +221,37 @@ export const CreateTestCase = ({
         </div>
         {/* Type of test case */}
         <div className="flex flex-col mb-4">
-          <label htmlFor="typeOfTestCase">
-            Type Of Test Case <span style={{ color: "red" }}>*</span>
+          <label htmlFor="type">
+            Type<span style={{ color: "red" }}>*</span>
           </label>
           <select
-            id="typeOfTestCase"
-            name="typeOfTestCase"
-            value={formData.typeOfTestCase}
+            id="type"
+            name="type"
+            value={formData.type}
             className="border-2 border-gray-300 rounded-md p-2 w-full"
             onChange={handleInputChange}
           >
             <option value="FUNCTIONAL">FUNCTIONAL</option>
-            <option value="NON_FUNCTIONAL">NON_FUNCTIONAL</option>
             <option value="REGRESSION">REGRESSION</option>
+            <option value="SMOKE">SMOKE</option>
+            <option value="INTEGRATION">INTEGRATION</option>
+            <option value="OTHER">OTHER</option>
           </select>
         </div>
 
         <div className="flex flex-col mb-4">
-          <label htmlFor="automationstatus">
-            Type Of Test Case <span style={{ color: "red" }}>*</span>
+          <label htmlFor="automation_status">
+            Automation Status <span style={{ color: "red" }}>*</span>
           </label>
           <select
             id="automationstatus"
-            name="automationstatus"
-            value={formData.automationstatus}
+            name="automation_status"
+            value={formData.automation_status}
             className="border-2 border-gray-300 rounded-md p-2 w-full"
             onChange={handleInputChange}
           >
             <option value="NOT_AUTOMATED">NOT_AUTOMATED</option>
+            <option value="IN_PROGRESS">IN_PROGRESS</option>
             <option value="AUTOMATED">AUTOMATED</option>
           </select>
         </div>
