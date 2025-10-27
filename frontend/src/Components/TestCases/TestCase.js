@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Folder, MoreVertical, X, ChevronRight, ChevronDown, Search } from "lucide-react";
+import {
+  Folder,
+  MoreVertical,
+  X,
+  ChevronRight,
+  ChevronDown,
+  Search,
+} from "lucide-react";
 import { get, post, patch, del } from "../../APICRUD/apiClient";
 import { FolderTestCase } from "./FolderTestCase";
 import { CommonButton } from "../../CommonComponents/Button";
@@ -8,7 +15,7 @@ import { CreateTestCase } from "./CreateTestCase";
 import { Modalpopup } from "../../CommonComponents/Modalpopup";
 
 export const TestCase = () => {
-  const GlobalOwnerId = "c90eab03-0312-4b4a-9c1a-dec0a145d482";
+  const GlobalOwnerId = "598ff3fb-cd06-430d-8cce-dc3e5ebe3900";
   const location = useLocation();
   const initialProjectId = location.state?.projectDbId || "";
 
@@ -20,11 +27,15 @@ export const TestCase = () => {
   const [openCreateTestCase, setOpenCreateTestCase] = useState(false);
   const [folderTestCases, setFolderTestCases] = useState(null);
   const [editingTestCaseId, setEditingTestCaseId] = useState(null);
-
-  // NEW: Search state
   const [projectSearchTerm, setProjectSearchTerm] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
-
+  // Add this after your existing state declarations (around line 20)
+  const [filters, setFilters] = useState({
+    type: null,
+    priority: null,
+    state: null,
+    searchTerm: "",
+  });
   // Folder management states
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [isEditFolderModalOpen, setIsEditFolderModalOpen] = useState(false);
@@ -34,7 +45,6 @@ export const TestCase = () => {
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [editingFolderId, setEditingFolderId] = useState(null);
-
 
   const resetFormData = () => {
     setFormData({
@@ -191,19 +201,52 @@ export const TestCase = () => {
     return isValid;
   };
 
-  const fetchFolderTestCases = async (folder) => {
+  const fetchFolderTestCases = async (folder, filterParams = {}) => {
     if (!folder) {
       setFolderTestCases(null);
       return;
     }
+
     try {
-      const res = await get(
-        `/api/projects/${folder.project_id}/test-cases?folder_id=${folder.id}&page=1&page_size=20`
-      );
+      let res;
+
+      // Check if any filters are applied
+      const hasFilters =
+        filterParams.type ||
+        filterParams.priority ||
+        filterParams.state ||
+        filterParams.searchTerm;
+
+      if (hasFilters) {
+        // ✅ Path 2: User applied filters - use dynamic params
+        const params = new URLSearchParams({
+          folder_id: folder.id,
+          page: "1",
+          page_size: "20",
+        });
+
+        if (filterParams.type) params.append("type", filterParams.type);
+        if (filterParams.priority)
+          params.append("priority", filterParams.priority);
+        if (filterParams.state) params.append("state", filterParams.state);
+        if (filterParams.searchTerm)
+          params.append("search", filterParams.searchTerm);
+
+        res = await get(
+          `/api/projects/${folder.project_id}/test-cases?${params.toString()}`
+        );
+      } else {
+        // ✅ Path 1: User clicked folder - use base URL (no filters)
+        res = await get(
+          `/api/projects/${folder.project_id}/test-cases?folder_id=${folder.id}&page=1&page_size=20`
+        );
+      }
+
       const json = await res.json();
-      setFolderTestCases(json.data);
+      setFolderTestCases(json.data || []);
     } catch (error) {
-      setFolderTestCases(null);
+      console.error("Error fetching test cases:", error);
+      setFolderTestCases([]);
     }
   };
 
@@ -259,7 +302,7 @@ export const TestCase = () => {
             step: step.step,
             expected: step.expectedResult,
           })),
-          tag_ids: ["9445a556-f279-4276-9a09-f53f4dfeed2f"],
+          tag_ids: ["b6e2853c-a6ed-4957-b508-6a8efb46eb98"],
         };
 
         const response = await post(
@@ -364,6 +407,53 @@ export const TestCase = () => {
     }
   };
 
+  // Add filter change handler
+  const handleFilterChange = (filterType, value) => {
+    setFilters((prev) => {
+      const newFilters = { ...prev, [filterType]: value };
+
+      // Fetch test cases with new filters
+      if (selectedFolder) {
+        fetchFolderTestCases(selectedFolder, {
+          type: newFilters.type,
+          priority: newFilters.priority,
+          state: newFilters.state,
+          searchTerm: newFilters.searchTerm,
+        });
+      }
+
+      return newFilters;
+    });
+  };
+
+  const handleSearch = async (searchTerm) => {
+    if (!selectedProjectId || !selectedFolder?.id) return;
+
+    const trimmedSearch = searchTerm.trim();
+
+    // Update filter state
+    setFilters((prev) => ({ ...prev, searchTerm: trimmedSearch }));
+
+    // If search box is empty, reload all test cases with active filters
+    if (!trimmedSearch) {
+      await fetchFolderTestCases(selectedFolder, {
+        type: filters.type,
+        priority: filters.priority,
+        state: filters.state,
+        searchTerm: "", // Empty search
+      });
+      return;
+    }
+
+    // Fetch with all active filters including search term
+    await fetchFolderTestCases(selectedFolder, {
+      type: filters.type,
+      priority: filters.priority,
+      state: filters.state,
+      searchTerm: trimmedSearch,
+    });
+  };
+
   // Fetch Projects
   useEffect(() => {
     const fetchProjects = async () => {
@@ -383,12 +473,13 @@ export const TestCase = () => {
 
   // NEW: Filter projects based on search term
   useEffect(() => {
-    const filtered = projectsData.filter((project) =>
-      project.name?.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-      project.id?.toLowerCase().includes(projectSearchTerm.toLowerCase())
+    const filtered = projectsData.filter(
+      (project) =>
+        project.name?.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
+        project.id?.toLowerCase().includes(projectSearchTerm.toLowerCase())
     );
     setFilteredProjects(filtered);
-    
+
     // Show search results only if there's a search term
     setShowSearchResults(projectSearchTerm.length > 0);
   }, [projectSearchTerm, projectsData]);
@@ -409,15 +500,13 @@ export const TestCase = () => {
     setShowSearchResults(false);
   };
 
-
-
-    // Render Project Selection with Search
+  // Render Project Selection with Search
   const renderProjectSelection = () => (
     <div className="bg-white rounded-lg shadow-sm border p-4">
       <h3 className="text-sm font-semibold text-gray-700 mb-2">
         Select Project
       </h3>
-      
+
       {/* Search Input */}
       <div className="relative mb-2">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -439,7 +528,9 @@ export const TestCase = () => {
               className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b last:border-b-0"
               onClick={() => handleProjectSelect(project.id)}
             >
-              <div className="font-medium text-gray-900">{project.name || project.id}</div>
+              <div className="font-medium text-gray-900">
+                {project.name || project.id}
+              </div>
               {/* <div className="text-xs text-gray-500">{project.id}</div> */}
             </div>
           ))}
@@ -502,7 +593,16 @@ export const TestCase = () => {
 
   // Call fetch on folder change
   useEffect(() => {
-    fetchFolderTestCases(selectedFolder);
+    if (selectedFolder) {
+      // Reset filters when folder changes
+      setFilters({
+        type: null,
+        priority: null,
+        state: null,
+        searchTerm: "",
+      });
+      fetchFolderTestCases(selectedFolder);
+    }
   }, [selectedFolder]);
 
   // Create Folder or Subfolder
@@ -553,7 +653,11 @@ export const TestCase = () => {
 
   // Delete Folder
   const handleDeleteFolder = async (folderId) => {
-    if (!window.confirm("Are you sure you want to delete this folder and all its contents?"))
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this folder and all its contents?"
+      )
+    )
       return;
     try {
       setIsLoading(true);
@@ -738,7 +842,7 @@ export const TestCase = () => {
     return folderData.map((folder) => renderFolder(folder, 0));
   };
 
-return (
+  return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b">
         <div className="px-6 py-4">
@@ -748,10 +852,11 @@ return (
 
       <div className="flex container mx-auto p-6 gap-6">
         {/* Left column for Project Selection and Folder Structure */}
-        <div className="w-1/4 flex flex-col gap-4 relative"> {/* Added relative for positioning */}
+        <div className="w-1/4 flex flex-col gap-4 relative">
+          {" "}
+          {/* Added relative for positioning */}
           {/* UPDATED: Project Selection with Search */}
           {renderProjectSelection()}
-
           {/* Rest of your existing folder structure code remains the same */}
           <div className="bg-white rounded-lg shadow-sm border p-4">
             <div className="flex justify-between items-center mb-3">
@@ -779,7 +884,9 @@ return (
                 renderFolderTree()
               ) : (
                 <div className="text-gray-500 text-sm">
-                  {isLoading ? "Loading folders..." : "No folders available for this project."}
+                  {isLoading
+                    ? "Loading folders..."
+                    : "No folders available for this project."}
                 </div>
               )}
             </div>
@@ -789,16 +896,19 @@ return (
         {/* Right column for Test Cases (placeholder) */}
         {/* Swamy Changes */}
         <div className="w-full bg-white rounded-lg shadow-sm border p-4">
-        <FolderTestCase
-          selectedFolder={selectedFolder}
-          folderTestCases={folderTestCases}
-          handleEditTestCase={handleEditTestCase}
-          handleDeleteTestCase={handleDeleteTestCase}
-          handleCreateClick={() => {
-            setEditingTestCaseId(null);
-            onClose();
-          }}
-        />
+          <FolderTestCase
+            selectedFolder={selectedFolder}
+            folderTestCases={folderTestCases}
+            handleEditTestCase={handleEditTestCase}
+            handleDeleteTestCase={handleDeleteTestCase}
+            handleCreateClick={() => {
+              setEditingTestCaseId(null);
+              onClose();
+            }}
+            handleSearch={handleSearch}
+            filters={filters}
+            handleFilterChange={handleFilterChange}
+          />
         </div>
       </div>
 
@@ -857,21 +967,21 @@ return (
             </div>
 
             <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Folder name <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          placeholder="Enter folder name"
-          value={folderName}
-          onChange={(e) => {
-            const value = e.target.value.replace(/[^a-zA-Z\s]/g, ''); // Allow only letters and spaces
-            setFolderName(value);
-          }}
-          disabled={isLoading}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Folder name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Enter folder name"
+                value={folderName}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^a-zA-Z\s]/g, ""); // Allow only letters and spaces
+                  setFolderName(value);
+                }}
+                disabled={isLoading}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
 
             <div className="flex justify-end gap-3 mt-6">
               <button

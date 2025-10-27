@@ -197,7 +197,7 @@ export const CreateTestCase = ({
             onChange={handleInputChange}
           >
             <option value="ACTIVE">ACTIVE</option>
-            <option value="DRAFTE">DRAFT</option>
+            <option value="DRAFT">DRAFT</option>
             <option value="ARCHIVED">ARCHIVED</option>
           </select>
         </div>
