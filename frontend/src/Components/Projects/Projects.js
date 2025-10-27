@@ -26,7 +26,7 @@ export const Projects = () => {
   const [currentPageData, setCurrentPageData] = useState([]);
   const [filteredData, setFilteredData] = useState([]); 
   const [searchQuery, setSearchQuery] = useState(""); 
-  const [allProjects, setAllProjects] = useState([]); // store all pages
+  const [allProjects, setAllProjects] = useState([]);
   const [globalSearchActive, setGlobalSearchActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showMenuFor, setShowMenuFor] = useState(null);
@@ -36,14 +36,12 @@ export const Projects = () => {
   const [currentProject, setCurrentProject] = useState(null);
   const [newProjectName, setNewProjectName] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
- const [pageSize, setPageSize] = useState()
-  // Pagination
+  const [nameError, setNameError] = useState(""); // NEW: Validation error
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [pageInput, setPageInput] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProjects, setTotalProjects] = useState(0);
-
-  // NEW: Controlled input for "Go to page"
-  const [pageInput, setPageInput] = useState("");
 
   const menuRefs = useRef({});
   const navigate = useNavigate();
@@ -56,6 +54,17 @@ export const Projects = () => {
       day: "numeric",
       year: "numeric",
     }).format(new Date(dateString));
+  };
+
+  // NEW: Validate project name
+  const validateProjectName = (name) => {
+    if (!name.trim()) {
+      return "Project name is required";
+    }
+    if (!/^[a-zA-Z]/.test(name.trim())) {
+      return "Project name is not valid";
+    }
+    return "";
   };
 
   /* ---------- Fetch ONE page ---------- */
@@ -185,10 +194,14 @@ export const Projects = () => {
 
   /* ---------- CRUD ---------- */
   const handleCreateSubmit = async () => {
-    if (!newProjectName.trim()) return;
+    const error = validateProjectName(newProjectName);
+    if (error) {
+      setNameError(error);
+      return;
+    }
     setActionLoading(true);
     try {
-      await post("/api/projects", { name: newProjectName });
+      await post("/api/projects", { name: newProjectName.trim() });
       setCurrentPage(1);
       await refresh(1);
       closeCreateModal();
@@ -201,10 +214,14 @@ export const Projects = () => {
   };
 
   const handleEditSubmit = async () => {
-    if (!newProjectName.trim() || newProjectName === currentProject.title) return;
+    const error = validateProjectName(newProjectName);
+    if (error || newProjectName.trim() === currentProject.title) {
+      setNameError(error);
+      return;
+    }
     setActionLoading(true);
     try {
-      await patch(`/api/projects/${currentProject.id}`, { name: newProjectName });
+      await patch(`/api/projects/${currentProject.id}`, { name: newProjectName.trim() });
       await refresh(currentPage);
       closeEditModal();
     } catch (e) {
@@ -238,7 +255,6 @@ export const Projects = () => {
     if (currentPage > 1) {
       const prev = currentPage - 1;
       setCurrentPage(prev);
-      // fetchPage will be triggered by useEffect
     }
   };
 
@@ -252,10 +268,9 @@ export const Projects = () => {
   const goToPage = (page) => {
     const p = Math.max(1, Math.min(totalPages, page));
     setCurrentPage(p);
-    setPageInput(""); // Clear input after navigation
+    setPageInput("");
   };
 
-  /* ---------- NEW: Handle Go to Page Input ---------- */
   const handleGoToPage = () => {
     const num = parseInt(pageInput, 10);
     if (!isNaN(num) && num >= 1 && num <= totalPages) {
@@ -270,28 +285,50 @@ export const Projects = () => {
   };
 
   /* ---------- Modal helpers ---------- */
-  const openCreateModal = () => { setNewProjectName(""); setShowCreateModal(true); };
-  const closeCreateModal = () => { setShowCreateModal(false); setNewProjectName(""); };
-  const closeEditModal = () => { setShowEditModal(false); setNewProjectName(""); setCurrentProject(null); };
+  const openCreateModal = () => {
+    setNewProjectName("");
+    setNameError("");
+    setShowCreateModal(true);
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    setNewProjectName("");
+    setNameError("");
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setNewProjectName("");
+    setCurrentProject(null);
+    setNameError("");
+  };
+
   const openEditModal = (proj) => {
     setShowMenuFor(null);
     setCurrentProject(proj);
     setNewProjectName(proj.title);
     setShowEditModal(true);
+    setNameError("");
   };
+
   const openDeleteModal = (proj) => {
     setShowMenuFor(null);
     setCurrentProject(proj);
     setShowDeleteModal(true);
   };
-  const closeDeleteModal = () => { setShowDeleteModal(false); setCurrentProject(null); };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setCurrentProject(null);
+  };
 
   /* ---------- Outside click for menu ---------- */
   useEffect(() => {
     const handler = (e) => {
       if (showMenuFor && menuRefs.current[showMenuFor] && !menuRefs.current[showMenuFor].contains(e.target)) {
         setShowMenuFor(null);
-      }
+      } 
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -300,7 +337,7 @@ export const Projects = () => {
   /* ---------- Navigation ---------- */
   const handleNavigateToTestCases = (proj) => {
     navigate("/test-cases", {
-      state: { projectDbId: proj.id, projectTitle: proj.title, page: currentPage, page_size: pageSize,totalProjects, },
+      state: { projectDbId: proj.id, projectTitle: proj.title, page: currentPage, page_size: pageSize, totalProjects },
     });
   };
   
@@ -424,7 +461,7 @@ export const Projects = () => {
           )}
         </div>
 
-        {/* ========== PAGINATION WITH GO-TO-PAGE INPUT ========== */}
+        {/* Pagination */}
         {totalPages > 1 && !globalSearchActive && !searchQuery.trim() && (
           <div className="mt-8 flex flex-col items-center gap-4">
             <div className="text-sm text-gray-600">
@@ -470,7 +507,6 @@ export const Projects = () => {
               </button>
             </div>
 
-            {/* GO TO PAGE INPUT */}
             <div className="flex items-center gap-2">
               <TextField
                 size="small"
@@ -505,7 +541,7 @@ export const Projects = () => {
         )}
       </div>
 
-      {/* ---------- Modals ---------- */}
+      {/* Modals */}
       <Modalpopup
         open={showCreateModal}
         onClose={closeCreateModal}
@@ -516,9 +552,14 @@ export const Projects = () => {
             variant="outlined"
             label="Project Name"
             value={newProjectName}
-            onChange={(e) => setNewProjectName(e.target.value)}
+            onChange={(e) => {
+              setNewProjectName(e.target.value);
+              setNameError(validateProjectName(e.target.value));
+            }}
             placeholder="Enter project name"
             disabled={actionLoading}
+            error={!!nameError}
+            helperText={nameError}
           />
         }
         buttons={[
@@ -528,7 +569,7 @@ export const Projects = () => {
           <Button
             key="c2"
             onClick={handleCreateSubmit}
-            disabled={actionLoading || !newProjectName.trim()}
+            disabled={actionLoading || !!nameError || !newProjectName.trim()}
             variant="contained"
             color="primary"
           >
@@ -549,9 +590,14 @@ export const Projects = () => {
             variant="outlined"
             label="New Project Name"
             value={newProjectName}
-            onChange={(e) => setNewProjectName(e.target.value)}
+            onChange={(e) => {
+              setNewProjectName(e.target.value);
+              setNameError(validateProjectName(e.target.value));
+            }}
             placeholder="Enter new name"
             disabled={actionLoading}
+            error={!!nameError}
+            helperText={nameError}
           />
         }
         buttons={[
@@ -561,7 +607,7 @@ export const Projects = () => {
           <Button
             key="e2"
             onClick={handleEditSubmit}
-            disabled={actionLoading || !newProjectName.trim() || newProjectName === currentProject?.title}
+            disabled={actionLoading || !!nameError || !newProjectName.trim() || newProjectName === currentProject?.title}
             variant="contained"
             color="primary"
           >
