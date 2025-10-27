@@ -3,18 +3,19 @@ import { get, post, del } from "../../APICRUD/apiClient";
 import Button from "@mui/material/Button";
 import CloseIcon from "@mui/icons-material/Close";
 
-export const TestPlan = () => {
+export const TestPlan = ({ selectedProjectId }) => {
+  console.log(selectedProjectId);
   const projectId = "f7c45efb-f5b9-4d90-9ff2-c204b37233b3";
-  
+
   // Dummy initial values
   const dummyTags = [
     { id: "dummy-1", name: "Smoke Test" },
     { id: "dummy-2", name: "Regression Test" },
     { id: "dummy-3", name: "Integration Test" },
     { id: "dummy-4", name: "Performance Test" },
-    { id: "dummy-5", name: "Security Test" }
+    { id: "dummy-5", name: "Security Test" },
   ];
-  
+
   const [allTags, setAllTags] = useState(dummyTags);
   const [selectedTag, setSelectedTag] = useState(null);
   const [inputValue, setInputValue] = useState("");
@@ -45,7 +46,7 @@ export const TestPlan = () => {
   };
 
   // Filter tags based on input
-  const filteredTags = allTags.filter(tag => 
+  const filteredTags = allTags.filter((tag) =>
     tag.name.toLowerCase().includes(inputValue.toLowerCase())
   );
 
@@ -65,16 +66,16 @@ export const TestPlan = () => {
 
     setCreating(true);
     try {
-      const res = await post(`/api/projects/${projectId}/tags`, { 
-        name: inputValue.trim() 
+      const res = await post(`/api/projects/${projectId}/tags`, {
+        name: inputValue.trim(),
       });
       const json = await res.json();
-      
+
       alert("Tag created successfully!");
-      
+
       // Refresh tags from API
       await fetchTags();
-      
+
       // Clear selection
       setInputValue("");
       setSelectedTag(null);
@@ -90,11 +91,11 @@ export const TestPlan = () => {
   const handleDeleteTag = async (tagId, e) => {
     e.stopPropagation();
     if (!window.confirm("Delete this tag?")) return;
-    
+
     try {
       await del(`/api/projects/${projectId}/tags/${tagId}`);
-      setAllTags(allTags.filter(tag => tag.id !== tagId));
-      
+      setAllTags(allTags.filter((tag) => tag.id !== tagId));
+
       // Clear selection if deleted tag was selected
       if (selectedTag?.id === tagId) {
         setSelectedTag(null);
@@ -142,7 +143,7 @@ export const TestPlan = () => {
           {isOpen && !loading && (
             <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
               {filteredTags.length > 0 ? (
-                filteredTags.map(tag => (
+                filteredTags.map((tag) => (
                   <div
                     key={tag.id}
                     className="px-4 py-3 cursor-pointer hover:bg-blue-50 flex justify-between items-center group"
@@ -163,7 +164,9 @@ export const TestPlan = () => {
                 ))
               ) : (
                 <div className="px-4 py-3 text-gray-500 text-sm">
-                  {inputValue ? `No matching tags. Click "Create" to add "${inputValue}"` : "No tags available"}
+                  {inputValue
+                    ? `No matching tags. Click "Create" to add "${inputValue}"`
+                    : "No tags available"}
                 </div>
               )}
             </div>
@@ -187,7 +190,9 @@ export const TestPlan = () => {
       {selectedTag && (
         <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-md">
           <p className="text-sm text-gray-600">Selected Tag:</p>
-          <p className="text-lg font-semibold text-gray-800 mt-1">{selectedTag.name}</p>
+          <p className="text-lg font-semibold text-gray-800 mt-1">
+            {selectedTag.name}
+          </p>
         </div>
       )}
     </div>

@@ -931,6 +931,7 @@ export const TestCase = () => {
             handleStepChange={handleStepChange}
             handleRemoveStep={handleRemoveStep}
             handleInputChange={handleInputChange}
+            selectedProjectId={selectedProjectId}
           />
         }
         buttons={
