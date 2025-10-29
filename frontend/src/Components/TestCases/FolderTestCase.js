@@ -25,7 +25,6 @@ const STATES = [
   { value: "ARCHIVED", label: "Archived" },
 ];
 
-// Filter Dropdown Component
 const FilterDropdown = ({ options, selectedValue, onSelect, label }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -100,8 +99,8 @@ export const FolderTestCase = ({
   handleDeleteTestCase,
   handleCreateClick,
   handleSearch,
-  filters, // NEW: Add filters prop
-  handleFilterChange, // NEW: Add filter change handler
+  filters, 
+  handleFilterChange,
 }) => {
   if (!selectedFolder) {
     return (
@@ -112,7 +111,26 @@ export const FolderTestCase = ({
   }
 
   const name = selectedFolder.name;
-  const hasTestCases = folderTestCases?.length > 0;
+  const activeFilters = [];
+
+  if (filters.type) activeFilters.push(`Type: ${filters.type}`);
+  if (filters.priority) activeFilters.push(`Priority: ${filters.priority}`);
+  if (filters.state) activeFilters.push(`State: ${filters.state}`);
+  if (filters.searchTerm) activeFilters.push(`Search: "${filters.searchTerm}"`);
+
+  let emptyMessage = "";
+
+  if (folderTestCases?.length === 0 && activeFilters.length === 0) {
+    emptyMessage = "No test cases exist in this folder.";
+  } else if (activeFilters.length > 0 && folderTestCases?.length === 0) {
+    emptyMessage = `No test cases match the selected filters (${activeFilters.join(
+      ", "
+    )}).`;
+  } else if (filters.searchTerm && folderTestCases?.length === 0) {
+    emptyMessage = `No test cases match your search criteria (${filters.searchTerm}).`;
+  } else {
+    emptyMessage = "No test cases to display.";
+  }
 
   return (
     <div>
@@ -140,53 +158,52 @@ export const FolderTestCase = ({
         </div>
       </div>
 
-      {!hasTestCases ? (
-        <div className="text-gray-500">No Test Cases exist in this folder.</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <FilterDropdown
-                    options={TEST_CASE_TYPES}
-                    selectedValue={filters.type}
-                    onSelect={(value) => handleFilterChange("type", value)}
-                    label="Type"
-                  />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <FilterDropdown
-                    options={PRIORITIES}
-                    selectedValue={filters.priority}
-                    onSelect={(value) => handleFilterChange("priority", value)}
-                    label="Priority"
-                  />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <FilterDropdown
-                    options={STATES}
-                    selectedValue={filters.state}
-                    onSelect={(value) => handleFilterChange("state", value)}
-                    label="State"
-                  />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Owner
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {folderTestCases.map((testCase) => (
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                ID
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Title
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <FilterDropdown
+                  options={TEST_CASE_TYPES}
+                  selectedValue={filters.type}
+                  onSelect={(value) => handleFilterChange("type", value)}
+                  label="Type"
+                />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <FilterDropdown
+                  options={PRIORITIES}
+                  selectedValue={filters.priority}
+                  onSelect={(value) => handleFilterChange("priority", value)}
+                  label="Priority"
+                />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <FilterDropdown
+                  options={STATES}
+                  selectedValue={filters.state}
+                  onSelect={(value) => handleFilterChange("state", value)}
+                  label="State"
+                />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Owner
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+
+          <tbody className="bg-white divide-y divide-gray-200">
+            {folderTestCases && folderTestCases.length > 0 ? (
+              folderTestCases.map((testCase) => (
                 <tr key={testCase.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {testCase.key}
@@ -227,11 +244,17 @@ export const FolderTestCase = ({
                     />
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            ) : (
+              <tr>
+                <td colSpan={7} className="text-center py-4 text-gray-500">
+                  {emptyMessage}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

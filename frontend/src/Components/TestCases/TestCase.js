@@ -15,7 +15,7 @@ import { CreateTestCase } from "./CreateTestCase";
 import { Modalpopup } from "../../CommonComponents/Modalpopup";
 
 export const TestCase = () => {
-  const GlobalOwnerId = "598ff3fb-cd06-430d-8cce-dc3e5ebe3900";
+  const GlobalOwnerId = process.env.REACT_APP_GLOBAL_OWNER_ID;
   const location = useLocation();
   const initialProjectId = location.state?.projectDbId || "";
 
