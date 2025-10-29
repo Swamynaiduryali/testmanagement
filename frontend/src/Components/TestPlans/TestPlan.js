@@ -1,200 +1,266 @@
 import React, { useState, useEffect } from "react";
-import { get, post, del } from "../../APICRUD/apiClient";
-import Button from "@mui/material/Button";
-import CloseIcon from "@mui/icons-material/Close";
+import {
+  Box,
+  Chip,
+  TextField,
+  MenuItem,
+  ClickAwayListener,
+  CircularProgress,
+} from "@mui/material";
+import { get } from "../../APICRUD/apiClient";
 
-export const TestPlan = ({ selectedProjectId }) => {
-  console.log(selectedProjectId);
-  const projectId = "f7c45efb-f5b9-4d90-9ff2-c204b37233b3";
-
-  // Dummy initial values
-  const dummyTags = [
-    { id: "dummy-1", name: "Smoke Test" },
-    { id: "dummy-2", name: "Regression Test" },
-    { id: "dummy-3", name: "Integration Test" },
-    { id: "dummy-4", name: "Performance Test" },
-    { id: "dummy-5", name: "Security Test" },
-  ];
-
-  const [allTags, setAllTags] = useState(dummyTags);
-  const [selectedTag, setSelectedTag] = useState(null);
+export const TestPlan = ({ selectedProjectId, onTagsChange }) => {
+  const [tags, setTags] = useState([]); // ✅ [{ id, name }]
+  const [selectedTags, setSelectedTags] = useState([]); // ✅ [{ id, name }]
   const [inputValue, setInputValue] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState(null);
+  const [projectId, setProjectId] = useState(selectedProjectId || null);
 
-  // Fetch tags from API on mount
+  // ✅ Get projectId
   useEffect(() => {
-    fetchTags();
-  }, []);
-
-  const fetchTags = async () => {
-    try {
-      setLoading(true);
-      const res = await get(`/api/projects/${projectId}/tags`);
-      const json = await res.json();
-      const tags = json.data || [];
-      // Merge with dummy tags if API returns empty
-      setAllTags(tags.length > 0 ? tags : dummyTags);
-    } catch (err) {
-      console.error("fetchTags error:", err);
-      // Keep dummy tags on error
-      setAllTags(dummyTags);
-    } finally {
-      setLoading(false);
+    if (selectedProjectId) setProjectId(selectedProjectId);
+    else {
+      const stored = localStorage.getItem("projectId");
+      if (stored) setProjectId(stored);
     }
-  };
+  }, [selectedProjectId]);
 
-  // Filter tags based on input
-  const filteredTags = allTags.filter((tag) =>
-    tag.name.toLowerCase().includes(inputValue.toLowerCase())
-  );
-
-  // Select tag from dropdown
-  const selectTag = (tag) => {
-    setSelectedTag(tag);
-    setInputValue(tag.name);
-    setIsOpen(false);
-  };
-
-  // Create/Save tag to database
-  const handleCreateTag = async () => {
-    if (!inputValue.trim()) {
-      alert("Please enter a tag name");
-      return;
-    }
-
-    setCreating(true);
-    try {
-      const res = await post(`/api/projects/${projectId}/tags`, {
-        name: inputValue.trim(),
-      });
-      const json = await res.json();
-
-      alert("Tag created successfully!");
-
-      // Refresh tags from API
-      await fetchTags();
-
-      // Clear selection
-      setInputValue("");
-      setSelectedTag(null);
-    } catch (err) {
-      alert("Failed to create tag");
-      console.error(err);
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  // Delete tag from API
-  const handleDeleteTag = async (tagId, e) => {
-    e.stopPropagation();
-    if (!window.confirm("Delete this tag?")) return;
-
-    try {
-      await del(`/api/projects/${projectId}/tags/${tagId}`);
-      setAllTags(allTags.filter((tag) => tag.id !== tagId));
-
-      // Clear selection if deleted tag was selected
-      if (selectedTag?.id === tagId) {
-        setSelectedTag(null);
-        setInputValue("");
-      }
-    } catch (err) {
-      alert("Failed to delete tag");
-      console.error(err);
-    }
-  };
-
-  // Close dropdown when clicking outside
+  // ✅ Fetch tags
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (!e.target.closest(".tag-dropdown-container")) {
-        setIsOpen(false);
+    const fetchTags = async () => {
+      if (!projectId) return;
+      try {
+        setLoading(true);
+        setError(null);
+        const endpoint = `/api/projects/${projectId}/tags`;
+        console.log("🔄 Fetching from endpoint:", endpoint);
+
+        const response = await get(endpoint);
+        let data = response;
+
+        // Handle different response shapes
+        if (response && response.body) data = await response.json();
+        else if (response && typeof response.text === "function") {
+          const text = await response.text();
+          data = JSON.parse(text);
+        }
+
+        let tagsArray = [];
+        if (Array.isArray(data)) tagsArray = data;
+        else if (data?.data) tagsArray = data.data;
+        else if (data?.tags) tagsArray = data.tags;
+        else if (data?.result) tagsArray = data.result;
+        else if (data?.content) tagsArray = data.content;
+        else {
+          console.error("❌ Unexpected format:", data);
+          setError("Invalid response format");
+          return;
+        }
+
+        // ✅ Expecting each tag like { id, name }
+        const validTags = tagsArray
+          .filter((t) => t && (t.id || t.name))
+          .map((t) => ({
+            id: t.id, // ✅ keep the original backend ID only
+            name: t.name || t.title || t.label || "",
+          }));
+
+        setTags(validTags);
+      } catch (err) {
+        console.error("❌ Error fetching tags:", err);
+        setError(err.message || "Failed to fetch tags");
+      } finally {
+        setLoading(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    fetchTags();
+  }, [projectId]);
+
+  // ✅ Add tag manually (for new entry)
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && inputValue.trim()) {
+      const newTag = {
+        id: crypto.randomUUID(), // local-only new tag id
+        name: inputValue.trim(),
+      };
+      const updatedTags = [...selectedTags, newTag];
+      setSelectedTags(updatedTags);
+      onTagsChange?.(updatedTags.map((t) => t.id)); // ✅ Pass IDs only
+      setInputValue("");
+      setShowDropdown(false);
+      e.preventDefault();
+    }
+  };
+
+  // ✅ Select/deselect existing tag
+  const handleSelectTag = (tagObj) => {
+    // ✅ Ensure the real backend id is stored
+    const selectedTag = {
+      id: tagObj.id,
+      name: tagObj.name,
+    };
+
+    const already = selectedTags.find((t) => t.id === selectedTag.id);
+    const updated = already
+      ? selectedTags.filter((t) => t.id !== selectedTag.id)
+      : [...selectedTags, selectedTag];
+
+    setSelectedTags(updated);
+    onTagsChange?.(updated.map((t) => t.id)); // ✅ Pass only IDs (e.g. ["uuid1", "uuid2"])
+  };
+
+  // ✅ Remove tag
+  const handleDelete = (id) => {
+    const updated = selectedTags.filter((t) => t.id !== id);
+    setSelectedTags(updated);
+    onTagsChange?.(updated.map((t) => t.id)); // ✅ Pass IDs only
+  };
+
+  // ✅ Filter dropdown suggestions
+  const filteredTags = tags.filter(
+    (t) =>
+      t.name.toLowerCase().includes(inputValue.toLowerCase()) &&
+      !selectedTags.some((s) => s.id === t.id)
+  );
 
   return (
-    <div className="max-w-2xl mx-auto mt-10 p-6 bg-white border border-gray-300 rounded-lg shadow-md font-sans">
-      <h2 className="text-xl font-bold text-gray-800 mb-6">Test Plan - Tags</h2>
+    <ClickAwayListener onClickAway={() => setShowDropdown(false)}>
+      <Box sx={{ width: "260px", mt: 2 }}>
+        <h3 style={{ fontWeight: "600", fontSize: "15px", marginBottom: "8px" }}>
+          Tags
+        </h3>
 
-      {/* Editable Dropdown */}
-      <div className="space-y-4">
-        <div className="relative tag-dropdown-container">
-          <input
-            type="text"
+        {error && (
+          <Box
+            sx={{
+              color: "#d32f2f",
+              fontSize: "12px",
+              mb: 1,
+              p: 1,
+              backgroundColor: "#ffebee",
+              borderRadius: "4px",
+            }}
+          >
+            ❌ {error}
+          </Box>
+        )}
+
+        <Box
+          sx={{
+            position: "relative",
+            border: "1px solid #c4c4c4",
+            borderRadius: "6px",
+            padding: "4px 6px",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            minHeight: "40px",
+            backgroundColor: "#fff",
+            "&:focus-within": {
+              borderColor: "#1976d2",
+              boxShadow: "0 0 0 1px #1976d2",
+            },
+          }}
+        >
+          {selectedTags.map((tag) => (
+            <Chip
+              key={tag.id}
+              label={tag.name}
+              onDelete={() => handleDelete(tag.id)}
+              size="small"
+              sx={{
+                m: "2px",
+                backgroundColor: "#1976d2",
+                color: "#fff",
+                fontSize: "12px",
+              }}
+            />
+          ))}
+
+          <TextField
+            variant="standard"
+            placeholder={
+              selectedTags.length === 0 ? "Type or select a tag..." : ""
+            }
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);
-              setIsOpen(true);
-              setSelectedTag(null);
+              setShowDropdown(true);
             }}
-            onFocus={() => setIsOpen(true)}
-            placeholder="Type or select a tag..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+            onFocus={() => setShowDropdown(true)}
+            onKeyDown={handleKeyDown}
             disabled={loading}
+            sx={{
+              flex: 1,
+              "& .MuiInputBase-root": { border: "none" },
+              "& .MuiInput-underline:before, & .MuiInput-underline:after": {
+                display: "none",
+              },
+              "& input": {
+                padding: "6px",
+                fontSize: "14px",
+                outline: "none",
+              },
+            }}
           />
 
-          {/* Dropdown List */}
-          {isOpen && !loading && (
-            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {filteredTags.length > 0 ? (
+          {showDropdown && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                border: "1px solid #c4c4c4",
+                borderRadius: "4px",
+                backgroundColor: "#fff",
+                zIndex: 1000,
+                maxHeight: "200px",
+                overflowY: "auto",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                mt: "2px",
+              }}
+            >
+              {loading ? (
+                <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}>
+                  <CircularProgress size={20} />
+                </Box>
+              ) : filteredTags.length > 0 ? (
                 filteredTags.map((tag) => (
-                  <div
+                  <MenuItem
                     key={tag.id}
-                    className="px-4 py-3 cursor-pointer hover:bg-blue-50 flex justify-between items-center group"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      selectTag(tag);
+                    onClick={() => handleSelectTag(tag)}
+                    sx={{
+                      fontSize: "14px",
+                      padding: "8px 12px",
+                      "&:hover": { backgroundColor: "#f5f5f5" },
+                      borderBottom: "1px solid #f0f0f0",
                     }}
                   >
-                    <span className="text-sm">{tag.name}</span>
-                    <button
-                      onClick={(e) => handleDeleteTag(tag.id, e)}
-                      className="text-red-500 opacity-0 group-hover:opacity-100 hover:text-red-700 transition-opacity"
-                      title="Delete tag"
-                    >
-                      <CloseIcon fontSize="small" />
-                    </button>
-                  </div>
+                    {tag.name}
+                  </MenuItem>
                 ))
+              ) : inputValue ? (
+                <MenuItem disabled sx={{ fontSize: "13px", opacity: 0.7 }}>
+                  Press Enter to add "{inputValue}"
+                </MenuItem>
               ) : (
-                <div className="px-4 py-3 text-gray-500 text-sm">
-                  {inputValue
-                    ? `No matching tags. Click "Create" to add "${inputValue}"`
-                    : "No tags available"}
-                </div>
+                <MenuItem disabled sx={{ fontSize: "13px", opacity: 0.7 }}>
+                  No tags available
+                </MenuItem>
               )}
-            </div>
+            </Box>
           )}
-        </div>
+        </Box>
 
-        {/* Create Button */}
-        <Button
-          onClick={handleCreateTag}
-          disabled={creating || !inputValue.trim()}
-          variant="contained"
-          color="primary"
-          fullWidth
-          size="large"
-        >
-          {creating ? "Creating..." : "Create"}
-        </Button>
-      </div>
-
-      {/* Selected Tag Display */}
-      {selectedTag && (
-        <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-md">
-          <p className="text-sm text-gray-600">Selected Tag:</p>
-          <p className="text-lg font-semibold text-gray-800 mt-1">
-            {selectedTag.name}
-          </p>
-        </div>
-      )}
-    </div>
+        {selectedTags.length > 0 && (
+          <Box sx={{ fontSize: "12px", color: "#666", mt: 1 }}>
+            Selected IDs: [{selectedTags.map((t) => `"${t.id}"`).join(", ")}]
+          </Box>
+        )}
+      </Box>
+    </ClickAwayListener>
   );
 };
