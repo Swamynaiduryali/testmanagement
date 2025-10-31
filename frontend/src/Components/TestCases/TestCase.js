@@ -240,7 +240,7 @@ export const TestCase = () => {
       } else {
         // ✅ Path 1: User clicked folder - use base URL (no filters)
         res = await get(
-          `/api/projects/${folder.project_id}/test-cases?folder_id=${folder.id}&page=1&page_size=20`
+          `/api/projects/${testCase.project_id}/test-cases?folder_id=${testCase.folder_id}&page=1&page_size=20`
         );
       }
 
