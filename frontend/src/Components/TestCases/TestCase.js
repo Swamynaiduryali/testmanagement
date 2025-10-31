@@ -1066,7 +1066,7 @@ export const TestCase = () => {
                 disabled={isLoading || !folderName.trim()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
               >
-                {isLoading ? "Updating..." : "Update"}
+                {isLoading ? "Updating..." : "Update"} 
               </button>
             </div>
           </div>
