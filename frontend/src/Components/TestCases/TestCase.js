@@ -152,7 +152,7 @@ export const TestCase = () => {
         };
       }
       newErrors.steps = stepErrors;
-      return newErrors; 
+      return newErrors;
     });
   };
 
@@ -352,7 +352,7 @@ export const TestCase = () => {
       );
 
       // Parse steps_json safely
-      const stepsData = selectedTestCase?.steps_json 
+      const stepsData = selectedTestCase?.steps_json
         ? JSON.parse(selectedTestCase.steps_json)
         : [];
 
