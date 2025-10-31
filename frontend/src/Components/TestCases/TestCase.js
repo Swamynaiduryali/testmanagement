@@ -152,7 +152,7 @@ export const TestCase = () => {
         };
       }
       newErrors.steps = stepErrors;
-      return newErrors;
+      return newErrors; 
     });
   };
 
