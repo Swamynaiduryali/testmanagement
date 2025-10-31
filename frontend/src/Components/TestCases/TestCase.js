@@ -15,7 +15,7 @@ import { CreateTestCase } from "./CreateTestCase";
 import { Modalpopup } from "../../CommonComponents/Modalpopup";
 
 export const TestCase = () => {
-  const GlobalOwnerId = "598ff3fb-cd06-430d-8cce-dc3e5ebe3900";
+  const GlobalOwnerId = "c90eab03-0312-4b4a-9c1a-dec0a145d482";
   const location = useLocation();
   const initialProjectId = location.state?.projectDbId || "";
 
@@ -302,7 +302,7 @@ export const TestCase = () => {
             step: step.step,
             expected: step.expectedResult,
           })),
-          tag_ids: ["b6e2853c-a6ed-4957-b508-6a8efb46eb98"],
+          tag_ids: ["9445a556-f279-4276-9a09-f53f4dfeed2f"],
         };
 
         const response = await post(
@@ -338,7 +338,7 @@ export const TestCase = () => {
 
     try {
       const res = await get(
-        `/api/projects/${testCase.project_id}/test-cases?folder_id=${testCase.folder_id}&page=1&page_size=20`
+        `/api/projects/{{PROJECT_ID}}/test-cases?page=1&page_size=20`
       );
 
       const json = await res.json();
@@ -501,62 +501,55 @@ export const TestCase = () => {
   };
 
   // Render Project Selection with Search
-  const renderProjectSelection = () => (
-    <div className="bg-white rounded-lg shadow-sm border p-4">
-      <h3 className="text-sm font-semibold text-gray-700 mb-2">
-        Select Project
-      </h3>
+ const renderProjectSelection = () => (
+  <div className="bg-white rounded-lg shadow-sm border p-4">
+    <h3 className="text-sm font-semibold text-gray-700 mb-2">Select Project</h3>
 
-      {/* Search Input */}
-      <div className="relative mb-2">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+    <div className="relative">
+      {/* Search Input with Dropdown */}
+      <div className="flex items-center border rounded px-2 py-1">
+        <Search className="w-4 h-4 text-gray-400 mr-2" />
         <input
           type="text"
-          className="w-full pl-10 pr-4 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search projects..."
+          className="flex-1 text-sm focus:outline-none py-1"
+          placeholder="Search or select a project..."
           value={projectSearchTerm}
           onChange={handleProjectSearch}
+          onFocus={() => setShowSearchResults(true)}
         />
+        <button
+          type="button"
+          className="ml-2 text-gray-500 focus:outline-none"
+          onClick={() => setShowSearchResults((prev) => !prev)}
+        >
+          ▾
+        </button>
       </div>
 
-      {/* Search Results Dropdown */}
-      {showSearchResults && filteredProjects.length > 0 && (
+      {/* Dropdown results */}
+      {showSearchResults && (
         <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-auto mt-1">
-          {filteredProjects.map((project) => (
-            <div
-              key={project.id}
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b last:border-b-0"
-              onClick={() => handleProjectSelect(project.id)}
-            >
-              <div className="font-medium text-gray-900">
+          {filteredProjects.length > 0 ? (
+            filteredProjects.map((project) => (
+              <div
+                key={project.id}
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b last:border-b-0"
+                onClick={() => handleProjectSelect(project.id)}
+              >
                 {project.name || project.id}
               </div>
-              {/* <div className="text-xs text-gray-500">{project.id}</div> */}
+            ))
+          ) : (
+            <div className="px-4 py-2 text-sm text-gray-500">
+              No projects found
             </div>
-          ))}
+          )}
         </div>
       )}
-
-      {/* Project Dropdown (shows all projects when not searching) */}
-      {!showSearchResults && (
-        <select
-          className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={selectedProjectId}
-          onChange={(e) => setSelectedProjectId(e.target.value)}
-          disabled={isLoading}
-        >
-          <option value="" disabled>
-            Select a project
-          </option>
-          {projectsData.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name || project.id}
-            </option>
-          ))}
-        </select>
-      )}
     </div>
-  );
+  </div>
+);
+
   // Fetch Folders with nested structure
   const fetchFolders = async () => {
     if (!selectedProjectId) {
