@@ -15,7 +15,7 @@ import { CreateTestCase } from "./CreateTestCase";
 import { Modalpopup } from "../../CommonComponents/Modalpopup";
 
 export const TestCase = () => {
-  const GlobalOwnerId = process.env.REACT_APP_GLOBAL_OWNER_ID;
+  const GlobalOwnerId = process.env.REACT_APP_GLOBAL_OWNER_ID; 
   const location = useLocation();
   const initialProjectId = location.state?.projectDbId || "";
   const [folderData, setFolderData] = useState([]);
