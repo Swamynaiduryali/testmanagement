@@ -11,6 +11,7 @@ export const CreateTestCase = ({
   handleRemoveStep,
   handleInputChange,
   selectedProjectId,
+  handleSelectedTags,
 }) => {
   return (
     <div className="flex rounded-md bg-white p-2 h-screen">
@@ -259,7 +260,10 @@ export const CreateTestCase = ({
         </div>
 
         <div className="flex flex-col mb-4">
-          <TestPlan selectedProjectId={selectedProjectId}/>
+          <TestPlan
+            selectedProjectId={selectedProjectId}
+            onTagsChange={handleSelectedTags}
+          />
         </div>
       </div>
     </div>

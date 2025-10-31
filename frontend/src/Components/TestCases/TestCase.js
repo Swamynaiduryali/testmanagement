@@ -15,10 +15,9 @@ import { CreateTestCase } from "./CreateTestCase";
 import { Modalpopup } from "../../CommonComponents/Modalpopup";
 
 export const TestCase = () => {
-  const GlobalOwnerId = "c90eab03-0312-4b4a-9c1a-dec0a145d482";
+  const GlobalOwnerId = process.env.REACT_APP_GLOBAL_OWNER_ID;
   const location = useLocation();
   const initialProjectId = location.state?.projectDbId || "";
-
   const [folderData, setFolderData] = useState([]);
   const [projectsData, setProjectsData] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]); // NEW: Filtered projects for search
@@ -36,6 +35,9 @@ export const TestCase = () => {
     state: null,
     searchTerm: "",
   });
+  // Tags Management
+  const [selectedTags, setSelectedTags] = useState([]);
+
   // Folder management states
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [isEditFolderModalOpen, setIsEditFolderModalOpen] = useState(false);
@@ -302,7 +304,8 @@ export const TestCase = () => {
             step: step.step,
             expected: step.expectedResult,
           })),
-          tag_ids: ["9445a556-f279-4276-9a09-f53f4dfeed2f"],
+          // tag_ids: ["b6e2853c-a6ed-4957-b508-6a8efb46eb98"],
+          tag_ids: selectedTags,
         };
 
         const response = await post(
@@ -925,6 +928,7 @@ export const TestCase = () => {
             handleRemoveStep={handleRemoveStep}
             handleInputChange={handleInputChange}
             selectedProjectId={selectedProjectId}
+            handleSelectedTags={setSelectedTags}
           />
         }
         buttons={
