@@ -510,56 +510,51 @@ export const TestCase = () => {
         Select Project
       </h3>
 
-      {/* Search Input */}
-      <div className="relative mb-2">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          className="w-full pl-10 pr-4 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search projects..."
-          value={projectSearchTerm}
-          onChange={handleProjectSearch}
-        />
-      </div>
-
-      {/* Search Results Dropdown */}
-      {showSearchResults && filteredProjects.length > 0 && (
-        <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-auto mt-1">
-          {filteredProjects.map((project) => (
-            <div
-              key={project.id}
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b last:border-b-0"
-              onClick={() => handleProjectSelect(project.id)}
-            >
-              <div className="font-medium text-gray-900">
-                {project.name || project.id}
-              </div>
-              {/* <div className="text-xs text-gray-500">{project.id}</div> */}
-            </div>
-          ))}
+      <div className="relative">
+        {/* Search Input with Dropdown */}
+        <div className="flex items-center border rounded px-2 py-1">
+          <Search className="w-4 h-4 text-gray-400 mr-2" />
+          <input
+            type="text"
+            className="flex-1 text-sm focus:outline-none py-1"
+            placeholder="Search or select a project..."
+            value={projectSearchTerm}
+            onChange={handleProjectSearch}
+            onFocus={() => setShowSearchResults(true)}
+          />
+          <button
+            type="button"
+            className="ml-2 text-gray-500 focus:outline-none"
+            onClick={() => setShowSearchResults((prev) => !prev)}
+          >
+            ▾
+          </button>
         </div>
-      )}
 
-      {/* Project Dropdown (shows all projects when not searching) */}
-      {!showSearchResults && (
-        <select
-          className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={selectedProjectId}
-          onChange={(e) => setSelectedProjectId(e.target.value)}
-          disabled={isLoading}
-        >
-          <option value="" disabled>
-            Select a project
-          </option>
-          {projectsData.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name || project.id}
-            </option>
-          ))}
-        </select>
-      )}
+        {/* Dropdown results */}
+        {showSearchResults && (
+          <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-auto mt-1">
+            {filteredProjects.length > 0 ? (
+              filteredProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b last:border-b-0"
+                  onClick={() => handleProjectSelect(project.id)}
+                >
+                  {project.name || project.id}
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-2 text-sm text-gray-500">
+                No projects found
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
+
   // Fetch Folders with nested structure
   const fetchFolders = async () => {
     if (!selectedProjectId) {
@@ -1066,7 +1061,7 @@ export const TestCase = () => {
                 disabled={isLoading || !folderName.trim()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
               >
-                {isLoading ? "Updating..." : "Update"} 
+                {isLoading ? "Updating..." : "Update"}
               </button>
             </div>
           </div>
@@ -1075,4 +1070,3 @@ export const TestCase = () => {
     </div>
   );
 };
- 
