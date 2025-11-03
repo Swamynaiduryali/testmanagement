@@ -99,7 +99,7 @@ export const FolderTestCase = ({
   handleDeleteTestCase,
   handleCreateClick,
   handleSearch,
-  filters, 
+  filters,
   handleFilterChange,
 }) => {
   if (!selectedFolder) {
