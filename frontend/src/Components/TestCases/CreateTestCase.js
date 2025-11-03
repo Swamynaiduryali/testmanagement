@@ -1,6 +1,8 @@
 import { CommonButton } from "../../CommonComponents/Button";
 import { Icon } from "@iconify/react";
-import { TestPlan } from "../TestPlans/TestPlan";
+import { Tags } from "./Tags";
+
+// import { Tags } from "./Tags";
 
 export const CreateTestCase = ({
   addStep,
@@ -10,8 +12,9 @@ export const CreateTestCase = ({
   handleStepChange,
   handleRemoveStep,
   handleInputChange,
-  selectedProjectId,
-  handleSelectedTags,
+  tags,
+  selectedTags,
+  handleSelectedTagsChange,
 }) => {
   return (
     <div className="flex rounded-md bg-white p-2 h-screen">
@@ -258,11 +261,11 @@ export const CreateTestCase = ({
             <option value="AUTOMATED">AUTOMATED</option>
           </select>
         </div>
-
-        <div className="flex flex-col mb-4">
-          <TestPlan
-            selectedProjectId={selectedProjectId}
-            onTagsChange={handleSelectedTags}
+        <div>
+          <Tags
+            options={tags}
+            selectedTags={selectedTags}
+            handleSelectedTagsChange={handleSelectedTagsChange}
           />
         </div>
       </div>
