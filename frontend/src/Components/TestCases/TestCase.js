@@ -18,7 +18,6 @@ export const TestCase = () => {
   const GlobalOwnerId = process.env.REACT_APP_GLOBAL_OWNER_ID;
   const location = useLocation();
   const initialProjectId = location.state?.projectDbId || "";
-
   const [folderData, setFolderData] = useState([]);
   const [projectsData, setProjectsData] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]); // NEW: Filtered projects for search
@@ -29,6 +28,7 @@ export const TestCase = () => {
   const [editingTestCaseId, setEditingTestCaseId] = useState(null);
   const [projectSearchTerm, setProjectSearchTerm] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
+
   // Add this after your existing state declarations (around line 20)
   const [filters, setFilters] = useState({
     type: null,
@@ -36,6 +36,25 @@ export const TestCase = () => {
     state: null,
     searchTerm: "",
   });
+
+  // Tags Management
+  const [tags, setTags] = useState([]); // full tags fetched
+  const [selectedTags, setSelectedTags] = useState([]); // selected tag ids
+
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    get(`/api/projects/${selectedProjectId}/tags`)
+      .then((res) => res.json())
+      .then((data) => setTags(data))
+      .catch(() => setTags([]));
+  }, [selectedProjectId]);
+
+  console.log(selectedTags);
+
+  const handleSelectedTagsChange = (selected) => {
+    setSelectedTags(selected);
+  };
+
   // Folder management states
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [isEditFolderModalOpen, setIsEditFolderModalOpen] = useState(false);
@@ -57,7 +76,6 @@ export const TestCase = () => {
       type: "FUNCTIONAL",
       automation_status: "NOT_AUTOMATED",
     });
-
     setAddStep([
       {
         id: 1,
@@ -70,6 +88,7 @@ export const TestCase = () => {
       title: "",
       steps: [],
     });
+    setSelectedTags([]);
   };
 
   const handleSelectedFolder = (folder) => {
@@ -102,6 +121,7 @@ export const TestCase = () => {
     priority: "LOW",
     type: "FUNCTIONAL",
     automation_status: "NOT_AUTOMATED",
+    tags: [],
   });
 
   // Errors for validation of inputs
@@ -256,15 +276,17 @@ export const TestCase = () => {
 
     if (!validateForm()) return;
 
-    const detailsPayload = {
+    const payload = {
       title: formData.title,
+      description: formData.description, // include description on update
+      preconditions: formData.preconditions, // include preconditions on update
       priority: formData.priority,
       state: formData.state,
       type: formData.type,
+      folder_id: selectedFolder?.id || "",
+      owner_id: GlobalOwnerId,
       automation_status: formData.automation_status,
-    };
-
-    const stepsPayload = {
+      tag_ids: selectedTags,
       steps: addStep.map((step, index) => ({
         index: index + 1,
         step: step.step,
@@ -274,43 +296,12 @@ export const TestCase = () => {
 
     try {
       if (editingTestCaseId) {
-        console.log(selectedFolder);
-
-        // ✅ Use selectedFolder.project_id instead of the whole object
         await patch(
           `/api/projects/${selectedFolder?.project_id}/test-cases/${editingTestCaseId}`,
-          detailsPayload
-        );
-
-        await patch(
-          `/api/projects/${selectedFolder?.project_id}/test-cases/${editingTestCaseId}`,
-          stepsPayload
-        );
-      } else {
-        const payload = {
-          title: formData.title,
-          description: formData.description,
-          preconditions: formData.preconditions,
-          folder_id: selectedFolder?.id || "",
-          owner_id: GlobalOwnerId,
-          state: formData.state,
-          priority: formData.priority,
-          type: formData.type,
-          automation_status: formData.automation_status,
-          steps: addStep.map((step, index) => ({
-            index: index + 1,
-            step: step.step,
-            expected: step.expectedResult,
-          })),
-          tag_ids: ["b6e2853c-a6ed-4957-b508-6a8efb46eb98"],
-        };
-
-        const response = await post(
-          `/api/projects/${selectedProjectId}/test-cases`,
           payload
         );
-        const data = await response.json();
-        console.log("Test case created:", data);
+      } else {
+        await post(`/api/projects/${selectedProjectId}/test-cases`, payload);
       }
 
       resetFormData();
@@ -324,7 +315,7 @@ export const TestCase = () => {
 
   // Edit test case
   const handleEditTestCase = async (testCase) => {
-    console.log(testCase.folder_id);
+    // form handled inclusive
     setFormData({
       title: testCase.title || "",
       description: testCase.description || "",
@@ -336,14 +327,16 @@ export const TestCase = () => {
       automation_status: testCase.automation_status || "NOT_AUTOMATED",
     });
 
+    // tags handled here exclusive
+    const selectedTestCaseTagIds = (testCase.tags || []).map((t) => t.tag.id);
+    setSelectedTags(selectedTestCaseTagIds);
+
     try {
       const res = await get(
         `/api/projects/${testCase.project_id}/test-cases?folder_id=${testCase.folder_id}&page=1&page_size=20`
       );
 
       const json = await res.json();
-      console.log(json);
-
       const selectedTestCase = json?.data?.find(
         (item) => item.id === testCase.id
       );
@@ -352,8 +345,6 @@ export const TestCase = () => {
       const stepsData = selectedTestCase?.steps_json
         ? JSON.parse(selectedTestCase.steps_json)
         : [];
-
-      console.log(stepsData);
 
       setAddStep(
         stepsData.length
@@ -391,7 +382,7 @@ export const TestCase = () => {
   // Delete test case
   const handleDeleteTestCase = async (testCaseId, testCaseProjectId) => {
     console.log(testCaseId, testCaseProjectId);
-    //later I want to implement an modalpopup here
+    // later I want to implement an modalpopup here
     if (!window.confirm("Are you sure you want to delete this test case?"))
       return;
 
@@ -507,56 +498,51 @@ export const TestCase = () => {
         Select Project
       </h3>
 
-      {/* Search Input */}
-      <div className="relative mb-2">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          className="w-full pl-10 pr-4 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search projects..."
-          value={projectSearchTerm}
-          onChange={handleProjectSearch}
-        />
-      </div>
-
-      {/* Search Results Dropdown */}
-      {showSearchResults && filteredProjects.length > 0 && (
-        <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-auto mt-1">
-          {filteredProjects.map((project) => (
-            <div
-              key={project.id}
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b last:border-b-0"
-              onClick={() => handleProjectSelect(project.id)}
-            >
-              <div className="font-medium text-gray-900">
-                {project.name || project.id}
-              </div>
-              {/* <div className="text-xs text-gray-500">{project.id}</div> */}
-            </div>
-          ))}
+      <div className="relative">
+        {/* Search Input with Dropdown */}
+        <div className="flex items-center border rounded px-2 py-1">
+          <Search className="w-4 h-4 text-gray-400 mr-2" />
+          <input
+            type="text"
+            className="flex-1 text-sm focus:outline-none py-1"
+            placeholder="Search or select a project..."
+            value={projectSearchTerm}
+            onChange={handleProjectSearch}
+            onFocus={() => setShowSearchResults(true)}
+          />
+          <button
+            type="button"
+            className="ml-2 text-gray-500 focus:outline-none"
+            onClick={() => setShowSearchResults((prev) => !prev)}
+          >
+            ▾
+          </button>
         </div>
-      )}
 
-      {/* Project Dropdown (shows all projects when not searching) */}
-      {!showSearchResults && (
-        <select
-          className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={selectedProjectId}
-          onChange={(e) => setSelectedProjectId(e.target.value)}
-          disabled={isLoading}
-        >
-          <option value="" disabled>
-            Select a project
-          </option>
-          {projectsData.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name || project.id}
-            </option>
-          ))}
-        </select>
-      )}
+        {/* Dropdown results */}
+        {showSearchResults && (
+          <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-auto mt-1">
+            {filteredProjects.length > 0 ? (
+              filteredProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b last:border-b-0"
+                  onClick={() => handleProjectSelect(project.id)}
+                >
+                  {project.name || project.id}
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-2 text-sm text-gray-500">
+                No projects found
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
+
   // Fetch Folders with nested structure
   const fetchFolders = async () => {
     if (!selectedProjectId) {
@@ -853,10 +839,10 @@ export const TestCase = () => {
       <div className="flex container mx-auto p-6 gap-6">
         {/* Left column for Project Selection and Folder Structure */}
         <div className="w-1/4 flex flex-col gap-4 relative">
-          {" "}
           {/* Added relative for positioning */}
           {/* UPDATED: Project Selection with Search */}
           {renderProjectSelection()}
+
           {/* Rest of your existing folder structure code remains the same */}
           <div className="bg-white rounded-lg shadow-sm border p-4">
             <div className="flex justify-between items-center mb-3">
@@ -918,7 +904,6 @@ export const TestCase = () => {
         onClose={onClose}
         height="700px"
         width="1200px"
-        //  ${selectedFolder?.name}
         header={`${
           editingTestCaseId ? "Edit Test Case: " : "Create Test Case: "
         } ${selectedFolder?.name}`}
@@ -932,6 +917,9 @@ export const TestCase = () => {
             handleRemoveStep={handleRemoveStep}
             handleInputChange={handleInputChange}
             selectedProjectId={selectedProjectId}
+            tags={tags}
+            selectedTags={selectedTags}
+            handleSelectedTagsChange={handleSelectedTagsChange}
           />
         }
         buttons={
@@ -976,7 +964,7 @@ export const TestCase = () => {
                 placeholder="Enter folder name"
                 value={folderName}
                 onChange={(e) => {
-                  const value = e.target.value.replace(/[^a-zA-Z\s]/g, ""); // Allow only letters and spaces
+                  const value = e.target.value.replace(/[^a-zA-Z\s]/g, "");
                   setFolderName(value);
                 }}
                 disabled={isLoading}
