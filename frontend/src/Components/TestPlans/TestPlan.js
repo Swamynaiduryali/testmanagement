@@ -10,15 +10,16 @@ import {
 import { get } from "../../APICRUD/apiClient";
 
 export const TestPlan = ({ selectedProjectId, onTagsChange }) => {
-  const [tags, setTags] = useState([]); // ✅ [{ id, name }]
-  const [selectedTags, setSelectedTags] = useState([]); // ✅ [{ id, name }]
+  const [tags, setTags] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedTagIds, setSelectedTagIds] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [projectId, setProjectId] = useState(selectedProjectId || null);
 
-  // ✅ Get projectId
+  // ✅ Get projectId (from props or localStorage)
   useEffect(() => {
     if (selectedProjectId) setProjectId(selectedProjectId);
     else {
@@ -27,7 +28,7 @@ export const TestPlan = ({ selectedProjectId, onTagsChange }) => {
     }
   }, [selectedProjectId]);
 
-  // ✅ Fetch tags
+  // ✅ Fetch tags from backend
   useEffect(() => {
     const fetchTags = async () => {
       if (!projectId) return;
@@ -40,7 +41,6 @@ export const TestPlan = ({ selectedProjectId, onTagsChange }) => {
         const response = await get(endpoint);
         let data = response;
 
-        // Handle different response shapes
         if (response && response.body) data = await response.json();
         else if (response && typeof response.text === "function") {
           const text = await response.text();
@@ -59,15 +59,15 @@ export const TestPlan = ({ selectedProjectId, onTagsChange }) => {
           return;
         }
 
-        // ✅ Expecting each tag like { id, name }
         const validTags = tagsArray
           .filter((t) => t && (t.id || t.name))
           .map((t) => ({
-            id: t.id, // ✅ keep the original backend ID only
+            id: t.id,
             name: t.name || t.title || t.label || "",
           }));
 
         setTags(validTags);
+        console.log("✅ Tags fetched:", validTags);
       } catch (err) {
         console.error("❌ Error fetching tags:", err);
         setError(err.message || "Failed to fetch tags");
@@ -78,47 +78,57 @@ export const TestPlan = ({ selectedProjectId, onTagsChange }) => {
     fetchTags();
   }, [projectId]);
 
-  // ✅ Add tag manually (for new entry)
+  // ✅ Add new tag manually (when pressing Enter)
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && inputValue.trim()) {
       const newTag = {
-        id: crypto.randomUUID(), // local-only new tag id
+        id: crypto.randomUUID(),
         name: inputValue.trim(),
       };
       const updatedTags = [...selectedTags, newTag];
       setSelectedTags(updatedTags);
-      onTagsChange?.(updatedTags.map((t) => t.id)); // ✅ Pass IDs only
+
+      const updatedIds = updatedTags.map((t) => t.id);
+      setSelectedTagIds(updatedIds);
+      onTagsChange?.(updatedIds);
+
+      console.log("✅ Added New Tag IDs:", updatedIds);
       setInputValue("");
       setShowDropdown(false);
       e.preventDefault();
     }
   };
 
-  // ✅ Select/deselect existing tag
+  // ✅ Select/deselect tag
   const handleSelectTag = (tagObj) => {
-    // ✅ Ensure the real backend id is stored
-    const selectedTag = {
-      id: tagObj.id,
-      name: tagObj.name,
-    };
-
+    const selectedTag = { id: tagObj.id, name: tagObj.name };
     const already = selectedTags.find((t) => t.id === selectedTag.id);
     const updated = already
       ? selectedTags.filter((t) => t.id !== selectedTag.id)
       : [...selectedTags, selectedTag];
 
     setSelectedTags(updated);
-    onTagsChange?.(updated.map((t) => t.id)); // ✅ Pass only IDs (e.g. ["uuid1", "uuid2"])
+
+    const updatedIds = updated.map((t) => t.id);
+    setSelectedTagIds(updatedIds);
+    onTagsChange?.(updatedIds);
+
+    console.log("✅ Updated Tag IDs:", updatedIds);
   };
 
-  // ✅ Remove tag
+  // ✅ Remove tag chip
   const handleDelete = (id) => {
     const updated = selectedTags.filter((t) => t.id !== id);
     setSelectedTags(updated);
-    onTagsChange?.(updated.map((t) => t.id)); // ✅ Pass IDs only
+
+    const updatedIds = updated.map((t) => t.id);
+    setSelectedTagIds(updatedIds);
+    onTagsChange?.(updatedIds);
+
+    console.log("✅ Deleted Tag, remaining IDs:", updatedIds);
   };
 
-  // ✅ Filter dropdown suggestions
+  // ✅ Filter dropdown
   const filteredTags = tags.filter(
     (t) =>
       t.name.toLowerCase().includes(inputValue.toLowerCase()) &&
@@ -255,11 +265,7 @@ export const TestPlan = ({ selectedProjectId, onTagsChange }) => {
           )}
         </Box>
 
-        {selectedTags.length > 0 && (
-          <Box sx={{ fontSize: "12px", color: "#666", mt: 1 }}>
-            Selected IDs: [{selectedTags.map((t) => `"${t.id}"`).join(", ")}]
-          </Box>
-        )}
+        {/* 🔒 Removed Selected IDs UI Display (only console logging now) */}
       </Box>
     </ClickAwayListener>
   );

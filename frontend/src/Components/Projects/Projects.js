@@ -19,13 +19,13 @@ if (!BACKEND_API_KEY) {
   throw new Error("Missing API Key!");
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export const Projects = () => {
   /* ---------- State ---------- */
   const [currentPageData, setCurrentPageData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]); 
-  const [searchQuery, setSearchQuery] = useState(""); 
+  const [filteredData, setFilteredData] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [allProjects, setAllProjects] = useState([]);
   const [globalSearchActive, setGlobalSearchActive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -36,7 +36,7 @@ export const Projects = () => {
   const [currentProject, setCurrentProject] = useState(null);
   const [newProjectName, setNewProjectName] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
-  const [nameError, setNameError] = useState(""); // NEW: Validation error
+  const [nameError, setNameError] = useState("");
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [pageInput, setPageInput] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,7 +56,6 @@ export const Projects = () => {
     }).format(new Date(dateString));
   };
 
-  // NEW: Validate project name
   const validateProjectName = (name) => {
     if (!name.trim()) {
       return "Project name is required";
@@ -133,6 +132,7 @@ export const Projects = () => {
         try {
           setLoading(true);
           const allData = [];
+          const seenIds = new Set(); // ✅ Track seen IDs to prevent duplicates
           let page = 1;
           let keepFetching = true;
 
@@ -145,13 +145,15 @@ export const Projects = () => {
               keepFetching = false;
             } else {
               const mapped = raw
-                .filter((p) => !p.deleted_at)
-                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                .map((p) => ({
-                  id: p.id,
-                  title: p.name || "Untitled",
-                  createdAt: p.created_at ?? null,
-                }));
+                .filter((p) => !p.deleted_at && !seenIds.has(p.id)) // ✅ Filter duplicates
+                .map((p) => {
+                  seenIds.add(p.id); // ✅ Mark as seen
+                  return {
+                    id: p.id,
+                    title: p.name || "Untitled",
+                    createdAt: p.created_at ?? null,
+                  };
+                });
               allData.push(...mapped);
               page++;
               keepFetching = page <= (json.totalPages || 1);
@@ -187,7 +189,8 @@ export const Projects = () => {
 
   /* ---------- Refresh after mutation ---------- */
   const refresh = async (pageToShow = 1) => {
-    setAllProjects([]);
+    setAllProjects([]); // ✅ Clear cached projects
+    setSearchQuery(""); // ✅ Clear search to prevent re-fetching
     setGlobalSearchActive(false);
     await fetchPage(pageToShow);
   };
@@ -199,10 +202,24 @@ export const Projects = () => {
       setNameError(error);
       return;
     }
+
+    // ✅ Check if project name already exists
+    const projectNameExists = allProjects.some(
+      (p) => p.title.toLowerCase() === newProjectName.trim().toLowerCase()
+    ) || currentPageData.some(
+      (p) => p.title.toLowerCase() === newProjectName.trim().toLowerCase()
+    );
+
+    if (projectNameExists) {
+      setNameError("Project name already exists");
+      return;
+    }
+
     setActionLoading(true);
     try {
       await post("/api/projects", { name: newProjectName.trim() });
-      setCurrentPage(1);
+      
+      // ✅ Refresh and reset to page 1, clear search state
       await refresh(1);
       closeCreateModal();
     } catch (e) {
@@ -222,6 +239,8 @@ export const Projects = () => {
     setActionLoading(true);
     try {
       await patch(`/api/projects/${currentProject.id}`, { name: newProjectName.trim() });
+      
+      // ✅ Refresh with clear search state
       await refresh(currentPage);
       closeEditModal();
     } catch (e) {
@@ -240,6 +259,8 @@ export const Projects = () => {
       const j = await check.json();
       const newTotalPages = j.totalPages || 1;
       const pageToShow = currentPage > newTotalPages ? newTotalPages : currentPage;
+      
+      // ✅ Refresh with clear search state
       await refresh(pageToShow);
       closeDeleteModal();
     } catch (e) {
@@ -328,7 +349,7 @@ export const Projects = () => {
     const handler = (e) => {
       if (showMenuFor && menuRefs.current[showMenuFor] && !menuRefs.current[showMenuFor].contains(e.target)) {
         setShowMenuFor(null);
-      } 
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -340,7 +361,7 @@ export const Projects = () => {
       state: { projectDbId: proj.id, projectTitle: proj.title, page: currentPage, page_size: pageSize, totalProjects },
     });
   };
-  
+
   const toggleMenu = (e, id) => {
     e.stopPropagation();
     setShowMenuFor((prev) => (prev === id ? null : id));
@@ -364,12 +385,25 @@ export const Projects = () => {
     return btns;
   };
 
+  /* ---------- Deduplicate filtered data ---------- */
+  const getUniqueFilteredData = () => {
+    const seen = new Set();
+    return filteredData.filter((p) => {
+      if (seen.has(p.id)) {
+        return false;
+      }
+      seen.add(p.id);
+      return true;
+    });
+  };
+
   /* ---------- Render ---------- */
   if (loading) {
     return <div className="text-center py-12 text-gray-500">Loading projects…</div>;
   }
 
-  const noResults = filteredData.length === 0;
+  const uniqueFilteredData = getUniqueFilteredData();
+  const noResults = uniqueFilteredData.length === 0;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -410,7 +444,7 @@ export const Projects = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredData.map((p, index) => (
+              {uniqueFilteredData.map((p, index) => (
                 <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="py-4 px-6 text-sm font-medium text-gray-700">{index + 1}</td>
                   <td className="py-4 px-6">
