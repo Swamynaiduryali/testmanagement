@@ -6,13 +6,11 @@ export const TestRun = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
+  const [attachments, setAttachments] = useState([]); // ✅ store fetched files
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      console.log("📁 Selected:", file.name);
-      setSelectedFile(file);
-    }
+    if (file) setSelectedFile(file);
   };
 
   const handleUpload = async () => {
@@ -25,7 +23,7 @@ export const TestRun = () => {
     setUploadStatus("Uploading...");
 
     try {
-      // Build JSON payload (not FormData)
+      // Just sending metadata JSON
       const payload = {
         filename: selectedFile.name,
         mime_type: selectedFile.type,
@@ -50,10 +48,20 @@ export const TestRun = () => {
 
   const handleFetchAttachments = async () => {
     try {
-      const response = await get(`/api/test-cases/${TEST_CASE_ID}/attachments`);
-      console.log("📦 Attachments:", response);
+      const res = await get(`/api/test-cases/${TEST_CASE_ID}/attachments`);
+      const data = await res.json ? await res.json() : res;
+      console.log("📦 Attachments:", data);
+      setAttachments(data);
     } catch (error) {
       console.error("❌ Fetch error:", error);
+    }
+  };
+
+  const handleViewFile = (fileUrl) => {
+    if (fileUrl) {
+      window.open(fileUrl, "_blank"); // ✅ Opens file directly in new tab
+    } else {
+      alert("No URL found for this file.");
     }
   };
 
@@ -96,6 +104,34 @@ export const TestRun = () => {
 
       {uploadStatus && (
         <p style={{ marginTop: "15px", fontWeight: "bold" }}>{uploadStatus}</p>
+      )}
+
+      {/* ✅ List files */}
+      {attachments.length > 0 && (
+        <div style={{ marginTop: "20px" }}>
+          <h3>📄 Files:</h3>
+          <ul>
+            {attachments.map((file) => (
+              <li key={file.id} style={{ marginBottom: "10px" }}>
+                <strong>{file.filename}</strong> — {file.mime_type}
+                <button
+                  onClick={() => handleViewFile(file.url)}
+                  style={{
+                    marginLeft: "10px",
+                    padding: "5px 10px",
+                    backgroundColor: "#6f42c1",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  View File
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
