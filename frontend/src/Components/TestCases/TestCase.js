@@ -28,6 +28,18 @@ export const TestCase = () => {
   const [editingTestCaseId, setEditingTestCaseId] = useState(null);
   const [projectSearchTerm, setProjectSearchTerm] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
+
+  // 🔹 FIXED: Keep search box text in sync when project preselected (like Test5)
+useEffect(() => {
+  if (selectedProjectId && projectsData.length > 0) {
+    const selectedProject = projectsData.find((p) => p.id === selectedProjectId);
+    if (selectedProject) {
+      setProjectSearchTerm(selectedProject.name || selectedProject.id);
+    }
+  }
+}, [selectedProjectId, projectsData]);
+
+  
   // Add this after your existing state declarations (around line 20)
   const [filters, setFilters] = useState({
     type: null,
@@ -496,12 +508,23 @@ export const TestCase = () => {
     }
   };
 
+  const handleDropdownToggle = () => {
+  // When opening dropdown without search, show all projects
+  if (!showSearchResults) {
+    setFilteredProjects(projectsData);
+  }
+  setShowSearchResults((prev) => !prev);
+};
+
   // NEW: Handle project selection from search
-  const handleProjectSelect = (projectId) => {
-    setSelectedProjectId(projectId);
-    setProjectSearchTerm("");
-    setShowSearchResults(false);
-  };
+// 🔹 FIXED: Handle project selection and show selected name
+const handleProjectSelect = (projectId) => {
+  setSelectedProjectId(projectId);
+  const selected = projectsData.find((p) => p.id === projectId);
+  setProjectSearchTerm(selected?.name || selected?.id || "");
+  setShowSearchResults(false);
+};
+
 
   // Render Project Selection with Search
   const renderProjectSelection = () => (
@@ -525,10 +548,11 @@ export const TestCase = () => {
           <button
             type="button"
             className="ml-2 text-gray-500 focus:outline-none"
-            onClick={() => setShowSearchResults((prev) => !prev)}
+            onClick={handleDropdownToggle}
           >
             ▾
           </button>
+
         </div>
 
         {/* Dropdown results */}
