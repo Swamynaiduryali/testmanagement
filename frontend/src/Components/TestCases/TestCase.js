@@ -548,7 +548,7 @@ const handleProjectSelect = (projectId) => {
           <button
             type="button"
             className="ml-2 text-gray-500 focus:outline-none"
-            onClick={handleDropdownToggle}
+            onClick={handleDropdownToggle} 
           >
             ▾
           </button>
