@@ -30,16 +30,17 @@ export const TestCase = () => {
   const [showSearchResults, setShowSearchResults] = useState(false);
 
   // 🔹 FIXED: Keep search box text in sync when project preselected (like Test5)
-useEffect(() => {
-  if (selectedProjectId && projectsData.length > 0) {
-    const selectedProject = projectsData.find((p) => p.id === selectedProjectId);
-    if (selectedProject) {
-      setProjectSearchTerm(selectedProject.name || selectedProject.id);
+  useEffect(() => {
+    if (selectedProjectId && projectsData.length > 0) {
+      const selectedProject = projectsData.find(
+        (p) => p.id === selectedProjectId
+      );
+      if (selectedProject) {
+        setProjectSearchTerm(selectedProject.name || selectedProject.id);
+      }
     }
-  }
-}, [selectedProjectId, projectsData]);
+  }, [selectedProjectId, projectsData]);
 
-  
   // Add this after your existing state declarations (around line 20)
   const [filters, setFilters] = useState({
     type: null,
@@ -460,11 +461,19 @@ useEffect(() => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const projectsRes = await get("/api/projects?page=1&page_size=20");
-        const projectsData = await projectsRes.json();
-        const projectsList = projectsData.data;
-        setProjectsData(projectsList);
-        setFilteredProjects(projectsList); // Initialize filtered projects
+        let allProjects = [];
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const res = await get(`/api/projects?page=${page}&page_size=20`);
+          const json = await res.json();
+          allProjects = [...allProjects, ...json.data];
+          totalPages = json.totalPages;
+          page += 1;
+        } while (page <= totalPages);
+
+        setProjectsData(allProjects);
+        setFilteredProjects(allProjects); // Initialize filteredProjects with the full list
       } catch (error) {
         console.log("Project Fetch Error:", error.message || error);
       }
@@ -496,22 +505,21 @@ useEffect(() => {
   };
 
   const handleDropdownToggle = () => {
-  // When opening dropdown without search, show all projects
-  if (!showSearchResults) {
-    setFilteredProjects(projectsData);
-  }
-  setShowSearchResults((prev) => !prev);
-};
+    // When opening dropdown without search, show all projects
+    if (!showSearchResults) {
+      setFilteredProjects(projectsData);
+    }
+    setShowSearchResults((prev) => !prev);
+  };
 
   // NEW: Handle project selection from search
-// 🔹 FIXED: Handle project selection and show selected name
-const handleProjectSelect = (projectId) => {
-  setSelectedProjectId(projectId);
-  const selected = projectsData.find((p) => p.id === projectId);
-  setProjectSearchTerm(selected?.name || selected?.id || "");
-  setShowSearchResults(false);
-};
-
+  // 🔹 FIXED: Handle project selection and show selected name
+  const handleProjectSelect = (projectId) => {
+    setSelectedProjectId(projectId);
+    const selected = projectsData.find((p) => p.id === projectId);
+    setProjectSearchTerm(selected?.name || selected?.id || "");
+    setShowSearchResults(false);
+  };
 
   // Render Project Selection with Search
   const renderProjectSelection = () => (
@@ -535,11 +543,10 @@ const handleProjectSelect = (projectId) => {
           <button
             type="button"
             className="ml-2 text-gray-500 focus:outline-none"
-            onClick={handleDropdownToggle} 
+            onClick={handleDropdownToggle}
           >
             ▾
           </button>
-
         </div>
 
         {/* Dropdown results */}
@@ -579,7 +586,7 @@ const handleProjectSelect = (projectId) => {
       const foldersRes = await get(endpoint);
       const foldersData = await foldersRes.json();
 
-      // Normalize structure
+      // Normalize <structure></structure>
       const normalize = (folders) =>
   folders.map((f) => ({
     ...f,
@@ -1086,4 +1093,3 @@ const handleProjectSelect = (projectId) => {
     </div>
   );
 };
-
