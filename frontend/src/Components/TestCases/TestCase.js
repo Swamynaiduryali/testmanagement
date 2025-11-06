@@ -308,7 +308,7 @@ useEffect(() => {
     try {
       if (editingTestCaseId) {
         await patch(
-          `/api/projects/${selectedFolder?.project_id}/test-cases/${editingTestCaseId}`,
+          `/api/test-cases/${editingTestCaseId}`,
           payload
         );
       } else {
@@ -581,11 +581,15 @@ const handleProjectSelect = (projectId) => {
 
       // Normalize structure
       const normalize = (folders) =>
-        folders.map((f) => ({
-          ...f,
-          subFolders: f.subFolders || f.children || [],
-          subFoldersCount: (f.subFolders || f.children || []).length,
-        }));
+  folders.map((f) => ({
+    ...f,
+    subFolders: f.children ? normalize(f.children) : f.subFolders || [],
+    subFoldersCount: f.children
+      ? f.children.length
+      : f.subFolders
+      ? f.subFolders.length
+      : 0,
+  }));
 
       setFolderData(Array.isArray(foldersData) ? normalize(foldersData) : []);
     } catch (error) {
