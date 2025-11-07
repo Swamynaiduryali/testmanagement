@@ -396,7 +396,7 @@ export const TestCase = () => {
       return;
 
     try {
-      await del(`/api/projects/${testCaseProjectId}/test-cases/${testCaseId}`);
+      await del(`/api/test-cases/${testCaseId}`);
       alert("Test case deleted successfully!");
 
       // Refresh the test cases list
@@ -585,15 +585,15 @@ export const TestCase = () => {
 
       // Normalize <structure></structure>
       const normalize = (folders) =>
-  folders.map((f) => ({
-    ...f,
-    subFolders: f.children ? normalize(f.children) : f.subFolders || [],
-    subFoldersCount: f.children
-      ? f.children.length
-      : f.subFolders
-      ? f.subFolders.length
-      : 0,
-  }));
+        folders.map((f) => ({
+          ...f,
+          subFolders: f.children ? normalize(f.children) : f.subFolders || [],
+          subFoldersCount: f.children
+            ? f.children.length
+            : f.subFolders
+            ? f.subFolders.length
+            : 0,
+        }));
 
       setFolderData(Array.isArray(foldersData) ? normalize(foldersData) : []);
     } catch (error) {
