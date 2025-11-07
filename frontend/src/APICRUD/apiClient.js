@@ -1,6 +1,6 @@
 // apiClient.js
 
-export const BASE_URL = "http://localhost:3100";
+export const BASE_URL = "http://20.127.190.21:3100";
 const BACKEND_API_KEY = process.env.REACT_APP_BACKEND_API_KEY;
 
 if (!BACKEND_API_KEY) {

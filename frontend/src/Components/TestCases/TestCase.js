@@ -308,10 +308,7 @@ export const TestCase = () => {
 
     try {
       if (editingTestCaseId) {
-        await patch(
-          `/api/projects/${selectedFolder?.project_id}/test-cases/${editingTestCaseId}`,
-          payload
-        );
+        await patch(`/api/test-cases/${editingTestCaseId}`, payload);
       } else {
         await post(`/api/projects/${selectedProjectId}/test-cases`, payload);
       }
