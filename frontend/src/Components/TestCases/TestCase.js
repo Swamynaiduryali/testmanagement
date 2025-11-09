@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Folder,
@@ -76,6 +76,17 @@ export const TestCase = () => {
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [editingFolderId, setEditingFolderId] = useState(null);
+
+  // ✅ Copy Folder States
+  const [isCopyFolderModalOpen, setIsCopyFolderModalOpen] = useState(false);
+  const [copySourceFolderId, setCopySourceFolderId] = useState(null);
+  const [copyTargetProjectId, setCopyTargetProjectId] = useState("");
+  const [copyTargetFolderId, setCopyTargetFolderId] = useState(null);
+  const [copyFolderLoading, setCopyFolderLoading] = useState(false);
+  const [copyOptions, setCopyOptions] = useState({
+    includeTestCases: true,
+    includeSubfolders: true,
+  });
 
   const resetFormData = () => {
     setFormData({
@@ -587,6 +598,7 @@ export const TestCase = () => {
       const normalize = (folders) =>
         folders.map((f) => ({
           ...f,
+          project_id: selectedProjectId,
           subFolders: f.children ? normalize(f.children) : f.subFolders || [],
           subFoldersCount: f.children
             ? f.children.length
@@ -774,11 +786,433 @@ export const TestCase = () => {
     }
   }, [activeMenuFolder]);
 
+  // ==================== COPY FOLDER FUNCTIONS ====================
+
+  // ⭐ HELPER: Fetch ALL test cases with pagination
+  const fetchAllTestCases = useCallback(
+    async (projectId) => {
+      try {
+        let allTestCases = [];
+        let page = 1;
+        let hasMorePages = true;
+
+        console.log(`📥 Fetching all test cases from project...`);
+
+        while (hasMorePages) {
+          const testCaseRes = await get(
+            `/api/projects/${projectId}/test-cases?page=${page}&page_size=100`
+          );
+          const testCasesData = await testCaseRes.json();
+          const pageTestCases = testCasesData.data || [];
+
+          if (pageTestCases.length === 0) {
+            hasMorePages = false;
+          } else {
+            allTestCases = [...allTestCases, ...pageTestCases];
+            console.log(
+              `   Fetched page ${page}: ${pageTestCases.length} test cases (total: ${allTestCases.length})`
+            );
+            page++;
+          }
+        }
+
+        console.log(`✅ Total test cases fetched: ${allTestCases.length}`);
+        return allTestCases;
+      } catch (error) {
+        console.error("Error fetching test cases:", error);
+        return [];
+      }
+    },
+    [get]
+  );
+
+  // ⭐ HELPER: Fetch ALL folders (nested)
+  const fetchAllFolders = useCallback(
+    async (projectId) => {
+      try {
+        const endpoint = `/api/projects/${projectId}/folders?include_children=true&nested=true`;
+        const foldersRes = await get(endpoint);
+        const foldersData = await foldersRes.json();
+
+        let apiData = [];
+        if (Array.isArray(foldersData)) {
+          apiData = foldersData;
+        } else if (foldersData && foldersData.data) {
+          apiData = foldersData.data;
+        }
+
+        const normalizeData = (folders) => {
+          return folders.map((folder) => ({
+            ...folder,
+            project_id: projectId,
+            subFolders: folder.children ? normalizeData(folder.children) : [],
+          }));
+        };
+
+        const normalizedFolders = normalizeData(apiData);
+        return normalizedFolders;
+      } catch (error) {
+        console.error("Error fetching folders:", error);
+        return [];
+      }
+    },
+    [get]
+  );
+
+  // ⭐ STEP 1: OPEN COPY DIALOG
+  const handleCopyFolder = (folderId) => {
+    try {
+      setCopyFolderLoading(false);
+      setCopySourceFolderId(folderId);
+      setCopyTargetProjectId(selectedProjectId);
+      setCopyOptions({
+        includeTestCases: true,
+        includeSubfolders: true,
+      });
+      setIsCopyFolderModalOpen(true);
+      setActiveMenuFolder(null);
+    } catch (error) {
+      console.error("Error opening copy folder dialog:", error);
+      alert("Failed to open copy dialog");
+    }
+  };
+
+  // ⭐ STEP 2: EXECUTE COPY - WAIT FOR EACH STEP
+  const handleExecuteCopyFolder = async () => {
+    if (!copyTargetProjectId) {
+      alert("Please select a target project");
+      return;
+    }
+
+    try {
+      setCopyFolderLoading(true);
+
+      const sourceFolder = findFolderById(folderData, copySourceFolderId);
+      if (!sourceFolder) {
+        throw new Error("Source folder not found");
+      }
+
+      console.log("\n\n🚀 ========================================");
+      console.log(`📋 SOURCE FOLDER: "${sourceFolder.name}"`);
+      console.log(`🎯 TARGET PROJECT: ${copyTargetProjectId}`);
+      console.log(`📋 Include Test Cases: ${copyOptions.includeTestCases}`);
+      console.log(`📁 Include Subfolders: ${copyOptions.includeSubfolders}`);
+      console.log("========================================\n");
+
+      // Fetch target folders (for merging logic)
+      const targetFolders = await fetchAllFolders(copyTargetProjectId);
+
+      // Build target folder map: parentId -> Map<name, id> (exact name match)
+      const targetFolderMap = new Map();
+      const buildMap = (folders, parentId = null) => {
+        for (const folder of folders) {
+          let nameToId = targetFolderMap.get(parentId);
+          if (!nameToId) {
+            nameToId = new Map();
+            targetFolderMap.set(parentId, nameToId);
+          }
+          nameToId.set(folder.name, folder.id);
+          if (folder.subFolders && folder.subFolders.length > 0) {
+            buildMap(folder.subFolders, folder.id);
+          }
+        }
+      };
+      buildMap(targetFolders);
+
+      // ⭐ CHECK IF MAIN FOLDER ALREADY EXISTS IN TARGET ROOT
+      const rootParentKey = null;
+      const mainFolderName = sourceFolder.name.trim();
+      const existingMainFolderId = targetFolderMap
+        .get(rootParentKey)
+        ?.get(mainFolderName);
+      if (existingMainFolderId) {
+        console.log(
+          `❌ Main folder "${mainFolderName}" already exists in target project root (ID: ${existingMainFolderId})`
+        );
+        alert(
+          `Folder "${mainFolderName}" already exists in the target project.`
+        );
+        return;
+      }
+
+      // Fetch source test cases
+      let allTestCases = [];
+      if (copyOptions.includeTestCases) {
+        allTestCases = await fetchAllTestCases(sourceFolder.project_id);
+      }
+
+      // Build target test cases map: folderId -> Set<title> (to skip duplicates)
+      let targetTestCasesMap = null;
+      if (copyOptions.includeTestCases) {
+        const targetAllTestCases = await fetchAllTestCases(copyTargetProjectId);
+        targetTestCasesMap = new Map();
+        for (const tc of targetAllTestCases) {
+          const fid = tc.folder_id || null;
+          let titles = targetTestCasesMap.get(fid);
+          if (!titles) {
+            titles = new Set();
+            targetTestCasesMap.set(fid, titles);
+          }
+          titles.add(tc.title);
+        }
+      }
+
+      // Fetch target tags for mapping
+      let tagNameToId = new Map();
+      if (copyOptions.includeTestCases) {
+        try {
+          const targetTagsRes = await get(
+            `/api/projects/${copyTargetProjectId}/tags`
+          );
+          const targetTags = await targetTagsRes.json();
+          tagNameToId = new Map(targetTags.map((t) => [t.name, t.id]));
+          console.log(`📎 Target tags loaded: ${targetTags.length}`);
+        } catch (error) {
+          console.warn("Failed to fetch target tags:", error);
+          tagNameToId = new Map();
+        }
+      }
+
+      const idMapping = {};
+
+      // Counters
+      let totalCreatedFolders = 0;
+      let totalMergedFolders = 0;
+      let totalCopiedTestCases = 0;
+      let totalSkippedTestCases = 0;
+
+      // ⭐ RECURSIVE FUNCTION: Create/merge folder (use existing if matches name/parent, else create)
+      const createFolderAndChildren = async (folder, targetParentId) => {
+        try {
+          console.log(
+            `📁 Processing folder: "${folder.name}" (target parent: ${
+              targetParentId || "ROOT"
+            })`
+          );
+
+          // STEP 1: Check for existing folder by name under target parent
+          const parentKey = targetParentId || null;
+          const nameKey = folder.name.trim();
+          const existingId = targetFolderMap.get(parentKey)?.get(nameKey);
+
+          let newFolderId;
+          if (existingId) {
+            console.log(
+              `   📂 Using existing folder: "${nameKey}" (ID: ${existingId})`
+            );
+            newFolderId = existingId;
+            totalMergedFolders++;
+          } else {
+            // Create new folder
+            console.log(`   📁 Creating new folder: "${nameKey}"`);
+            const createPayload = {
+              name: nameKey,
+              ...(targetParentId ? { parent_id: targetParentId } : {}),
+            };
+
+            const res = await post(
+              `/api/projects/${copyTargetProjectId}/folders`,
+              createPayload
+            );
+
+            if (!res.ok) {
+              const errMsg = await res.text();
+              throw new Error(
+                `Failed to create folder "${nameKey}": ${errMsg}`
+              );
+            }
+
+            const newFolder = await res.json();
+            newFolderId = newFolder.id;
+
+            // Add to map for consistency in this run
+            let nameToId = targetFolderMap.get(parentKey) || new Map();
+            nameToId.set(nameKey, newFolderId);
+            targetFolderMap.set(parentKey, nameToId);
+
+            console.log(`   ✅ Created: "${nameKey}" → New ID: ${newFolderId}`);
+            totalCreatedFolders++;
+          }
+
+          // STEP 2: Copy test cases (skip if title exists in target folder)
+          if (copyOptions.includeTestCases && allTestCases.length > 0) {
+            console.log(
+              `📋 Copying test cases for: "${folder.name}" (source folder_id: ${folder.id}, target: ${newFolderId})`
+            );
+
+            const folderTestCases = allTestCases.filter(
+              (tc) => tc.folder_id === folder.id
+            );
+
+            console.log(
+              `   Found ${folderTestCases.length} test cases in source folder`
+            );
+
+            let copiedCount = 0;
+            let skippedCount = 0;
+
+            for (const originalTestCase of folderTestCases) {
+              try {
+                const targetTitles =
+                  targetTestCasesMap?.get(newFolderId) || new Set();
+                if (targetTitles.has(originalTestCase.title)) {
+                  console.log(
+                    `   ⏭️ Skipped duplicate: "${originalTestCase.title}"`
+                  );
+                  skippedCount++;
+                  continue;
+                }
+
+                const stepsData = originalTestCase.steps_json
+                  ? JSON.parse(originalTestCase.steps_json)
+                  : [];
+
+                // Map tags by name to target project tags
+                const mappedTagIds = (originalTestCase.tags || [])
+                  .map((t) => {
+                    const tagName = t.tag?.name || t.name; // Handle possible structures
+                    return tagNameToId.get(tagName);
+                  })
+                  .filter(Boolean);
+
+                const testCasePayload = {
+                  title: originalTestCase.title,
+                  description: originalTestCase.description || "",
+                  preconditions: originalTestCase.preconditions || "",
+                  priority: originalTestCase.priority || "LOW",
+                  state: originalTestCase.state || "ACTIVE",
+                  type: originalTestCase.type || "FUNCTIONAL",
+                  folder_id: newFolderId,
+                  owner_id: GlobalOwnerId,
+                  automation_status:
+                    originalTestCase.automation_status || "NOT_AUTOMATED",
+                  tag_ids: mappedTagIds,
+                  steps: stepsData.map((step, index) => ({
+                    index: index + 1,
+                    step: step.step || "",
+                    expected: step.expected || "",
+                  })),
+                };
+
+                const tcRes = await post(
+                  `/api/projects/${copyTargetProjectId}/test-cases`,
+                  testCasePayload
+                );
+
+                if (!tcRes.ok) {
+                  const errMsg = await tcRes.text();
+                  console.warn(
+                    `   ⚠️ Failed to copy test case "${originalTestCase.title}": ${errMsg}`
+                  );
+                  continue;
+                }
+
+                const createdTestCase = await tcRes.json();
+
+                // Add to target map to avoid dups in same run
+                if (targetTestCasesMap) {
+                  let titles = targetTestCasesMap.get(newFolderId);
+                  if (!titles) {
+                    titles = new Set();
+                    targetTestCasesMap.set(newFolderId, titles);
+                  }
+                  titles.add(originalTestCase.title);
+                }
+
+                console.log(
+                  `   ✅ Copied: "${originalTestCase.title}" (New ID: ${createdTestCase.id})`
+                );
+                copiedCount++;
+              } catch (error) {
+                console.error(
+                  `   ❌ Error copying test case "${originalTestCase.title}":`,
+                  error
+                );
+              }
+            }
+
+            totalCopiedTestCases += copiedCount;
+            totalSkippedTestCases += skippedCount;
+
+            console.log(
+              `   📊 Test cases: ${copiedCount} copied, ${skippedCount} skipped`
+            );
+          }
+
+          // STEP 3: Recurse children (sequentially)
+          if (
+            copyOptions.includeSubfolders &&
+            folder.subFolders &&
+            folder.subFolders.length > 0
+          ) {
+            console.log(
+              `📂 Processing ${folder.subFolders.length} children for "${folder.name}"`
+            );
+
+            for (const childFolder of folder.subFolders) {
+              await createFolderAndChildren(childFolder, newFolderId);
+            }
+          }
+
+          // Map source to target ID (even if existing)
+          idMapping[folder.id] = newFolderId;
+          console.log(
+            `   🔗 Mapped source ID ${folder.id} → target ID ${newFolderId}`
+          );
+        } catch (error) {
+          console.error(`❌ Error processing folder "${folder.name}":`, error);
+          throw error;
+        }
+      };
+
+      // START RECURSION
+      await createFolderAndChildren(sourceFolder, null);
+
+      console.log("\n✅ ========================================");
+      console.log("🎉 COPY COMPLETED SUCCESSFULLY!");
+      console.log("📊 ID Mapping:");
+      console.log(JSON.stringify(idMapping, null, 2));
+      console.log("📊 Summary:");
+      console.log(`   Folders created: ${totalCreatedFolders}`);
+      console.log(`   Folders merged: ${totalMergedFolders}`);
+      console.log(`   Test cases copied: ${totalCopiedTestCases}`);
+      console.log(`   Test cases skipped: ${totalSkippedTestCases}`);
+      console.log("========================================\n\n");
+
+      alert(
+        `✅ Folder "${sourceFolder.name}" copied successfully!\n\n` +
+          `📁 Folders: ${totalCreatedFolders} created, ${totalMergedFolders} merged\n` +
+          `📋 Test cases: ${totalCopiedTestCases} copied, ${totalSkippedTestCases} skipped`
+      );
+
+      // RESET STATE
+      setIsCopyFolderModalOpen(false);
+      setCopySourceFolderId(null);
+      setCopyTargetProjectId("");
+      setCopyTargetFolderId(null);
+      setCopyOptions({
+        includeTestCases: true,
+        includeSubfolders: true,
+      });
+
+      // REFRESH CURRENT VIEW (if target was current project)
+      if (copyTargetProjectId === selectedProjectId) {
+        await fetchFolders();
+      }
+    } catch (error) {
+      console.error("❌ Copy folder error:", error);
+      alert(`❌ ${error.message || "Failed to copy folder"}`);
+    } finally {
+      setCopyFolderLoading(false);
+    }
+  };
+
   // Render Folder Tree Recursively
   const renderFolder = (folder, level = 0) => {
     const hasSubFolders = folder.subFolders?.length > 0;
     const isExpanded = expandedFolders.has(folder.id);
     const isSelected = selectedFolder?.id === folder.id;
+    const isRootFolder = level === 0;
 
     return (
       <div key={folder.id}>
@@ -828,6 +1262,16 @@ export const TestCase = () => {
               >
                 Edit Folder
               </button>
+              {isRootFolder && (
+                <button
+                  onClick={() => {
+                    handleCopyFolder(folder.id);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                >
+                  Copy Folder
+                </button>
+              )}
               <button
                 onClick={() => handleCopyFolderUrl(folder.id)}
                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
@@ -1082,6 +1526,132 @@ export const TestCase = () => {
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
               >
                 {isLoading ? "Updating..." : "Update"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isCopyFolderModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-96 overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Copy Folder</h2>
+              <button
+                onClick={() => {
+                  setIsCopyFolderModalOpen(false);
+                  setCopySourceFolderId(null);
+                  setCopyTargetProjectId("");
+                  setCopyTargetFolderId(null);
+                  setCopyOptions({
+                    includeTestCases: true,
+                    includeSubfolders: true,
+                  });
+                }}
+                disabled={copyFolderLoading}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Choose the target location for copying this folder:
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Target Project <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={copyTargetProjectId}
+                onChange={(e) => {
+                  setCopyTargetProjectId(e.target.value);
+                  setCopyTargetFolderId(null);
+                }}
+                disabled={copyFolderLoading}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select a project</option>
+                {projectsData.map((proj) => (
+                  <option key={proj.id} value={proj.id}>
+                    {proj.name || proj.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* <div className="mb-4 space-y-3 p-3 bg-gray-50 rounded-md border">
+              <h3 className="text-sm font-medium text-gray-700">
+                Copy Options:
+              </h3>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="includeTestCases"
+                  checked={copyOptions.includeTestCases}
+                  onChange={(e) =>
+                    setCopyOptions((prev) => ({
+                      ...prev,
+                      includeTestCases: e.target.checked,
+                    }))
+                  }
+                  disabled={copyFolderLoading}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                />
+                <label
+                  htmlFor="includeTestCases"
+                  className="ml-2 text-sm text-gray-700 cursor-pointer"
+                >
+                  Include Test Cases
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="includeSubfolders"
+                  checked={copyOptions.includeSubfolders}
+                  onChange={(e) =>
+                    setCopyOptions((prev) => ({
+                      ...prev,
+                      includeSubfolders: e.target.checked,
+                    }))
+                  }
+                  disabled={copyFolderLoading}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                />
+                <label
+                  htmlFor="includeSubfolders"
+                  className="ml-2 text-sm text-gray-700 cursor-pointer"
+                >
+                  Include Subfolders
+                </label>
+              </div>
+            </div> */}
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setIsCopyFolderModalOpen(false);
+                  setCopySourceFolderId(null);
+                  setCopyTargetProjectId("");
+                  setCopyTargetFolderId(null);
+                  setCopyOptions({
+                    includeTestCases: true,
+                    includeSubfolders: true,
+                  });
+                }}
+                disabled={copyFolderLoading}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExecuteCopyFolder}
+                disabled={copyFolderLoading || !copyTargetProjectId}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+              >
+                {copyFolderLoading ? "Copying..." : "Copy Folder"}
               </button>
             </div>
           </div>
