@@ -101,6 +101,7 @@ export const FolderTestCase = ({
   handleSearch,
   filters,
   handleFilterChange,
+  handleViewTestCase,
 }) => {
   if (!selectedFolder) {
     return (
@@ -226,6 +227,11 @@ export const FolderTestCase = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <PositionedMenu
                       actions={[
+                        {
+                          label: "View",
+                          icon: "mdi:eye-outline", // Using a common eye icon
+                          onClick: () => handleViewTestCase(testCase),
+                        },
                         {
                           label: "Edit",
                           icon: "mdi:pencil-outline",

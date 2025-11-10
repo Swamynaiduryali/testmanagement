@@ -216,7 +216,12 @@ function CustomAutocomplete(props) {
   );
 }
 
-export const Tags = ({ options, selectedTags, handleSelectedTagsChange }) => {
+export const Tags = ({
+  options,
+  selectedTags,
+  handleSelectedTagsChange,
+  isViewMode,
+}) => {
   const selectedTagObjects = options.filter((tag) =>
     selectedTags.includes(tag.id)
   );
@@ -232,6 +237,7 @@ export const Tags = ({ options, selectedTags, handleSelectedTagsChange }) => {
       value={selectedTagObjects}
       getOptionLabel={(option) => option.name}
       onChange={(_, newValue) => handleChange(newValue)}
+      disabled={isViewMode}
     />
   );
 };

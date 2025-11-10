@@ -15,6 +15,7 @@ export const CreateTestCase = ({
   tags,
   selectedTags,
   handleSelectedTagsChange,
+  isViewMode,
 }) => {
   return (
     <div className="flex rounded-md bg-white p-2 h-screen">
@@ -38,6 +39,7 @@ export const CreateTestCase = ({
                 } rounded-md p-2 w-full`}
                 value={formData.title}
                 onChange={handleInputChange}
+                disabled={isViewMode}
               />
               {errors.title && (
                 <p className="text-red-600 text-sm mt-1">{errors.title}</p>
@@ -55,6 +57,7 @@ export const CreateTestCase = ({
               className="w-full border-2 border-gray-300 rounded-md p-2 h-24"
               value={formData.description}
               onChange={handleInputChange}
+              disabled={isViewMode}
             />
           </div>
           <div className="mb-4">
@@ -66,6 +69,7 @@ export const CreateTestCase = ({
               className="w-full border-2 border-gray-300 rounded-md p-2 h-24"
               value={formData.preconditions}
               onChange={handleInputChange}
+              disabled={isViewMode}
             />
           </div>
 
@@ -99,6 +103,7 @@ export const CreateTestCase = ({
                       onChange={(e) =>
                         handleStepChange(index, "step", e.target.value)
                       }
+                      disabled={isViewMode}
                     />
                     {errors.steps[index]?.step && (
                       <p className="text-red-600 text-sm mt-1">
@@ -127,6 +132,7 @@ export const CreateTestCase = ({
                           e.target.value
                         )
                       }
+                      disabled={isViewMode}
                     />
                     {errors.steps[index]?.expectedResult && (
                       <p className="text-red-600 text-sm mt-1">
@@ -186,6 +192,7 @@ export const CreateTestCase = ({
             value={formData.owner}
             className="border-2 border-gray-300 rounded-md p-2 w-full"
             onChange={handleInputChange}
+            disabled={isViewMode}
           >
             <option value="owner1">Owner1</option>
           </select>
@@ -201,6 +208,7 @@ export const CreateTestCase = ({
             value={formData.state}
             className="border-2 border-gray-300 rounded-md p-2 w-full"
             onChange={handleInputChange}
+            disabled={isViewMode}
           >
             <option value="ACTIVE">ACTIVE</option>
             <option value="DRAFT">DRAFT</option>
@@ -218,6 +226,7 @@ export const CreateTestCase = ({
             value={formData.priority}
             className="border-2 border-gray-300 rounded-md p-2 w-full"
             onChange={handleInputChange}
+            disabled={isViewMode}
           >
             <option value="CRITICAL">CRITICAL</option>
             <option value="HIGH">HIGH</option>
@@ -236,6 +245,7 @@ export const CreateTestCase = ({
             value={formData.type}
             className="border-2 border-gray-300 rounded-md p-2 w-full"
             onChange={handleInputChange}
+            disabled={isViewMode}
           >
             <option value="FUNCTIONAL">FUNCTIONAL</option>
             <option value="REGRESSION">REGRESSION</option>
@@ -255,6 +265,7 @@ export const CreateTestCase = ({
             value={formData.automation_status}
             className="border-2 border-gray-300 rounded-md p-2 w-full"
             onChange={handleInputChange}
+            disabled={isViewMode}
           >
             <option value="NOT_AUTOMATED">NOT_AUTOMATED</option>
             <option value="IN_PROGRESS">IN_PROGRESS</option>
@@ -266,6 +277,7 @@ export const CreateTestCase = ({
             options={tags}
             selectedTags={selectedTags}
             handleSelectedTagsChange={handleSelectedTagsChange}
+            isViewMode={isViewMode}
           />
         </div>
       </div>

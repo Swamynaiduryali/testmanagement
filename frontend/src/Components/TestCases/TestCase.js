@@ -28,6 +28,11 @@ export const TestCase = () => {
   const [editingTestCaseId, setEditingTestCaseId] = useState(null);
   const [projectSearchTerm, setProjectSearchTerm] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
+  //test case view mode
+  const [isViewMode, setIsViewMode] = useState(false);
+  //delete test case view
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [testCaseToDelete, setTestCaseToDelete] = useState(null);
 
   // 🔹 FIXED: Keep search box text in sync when project preselected (like Test5)
   useEffect(() => {
@@ -122,6 +127,8 @@ export const TestCase = () => {
     setOpenCreateTestCase((prev) => !prev);
     resetFormData();
     setEditingTestCaseId(null);
+    //test case view mode
+    setIsViewMode(false);
   };
 
   // Steps data
@@ -293,6 +300,52 @@ export const TestCase = () => {
     }
   };
 
+  //test case view mode
+  const handleViewTestCase = async (testCase) => {
+    // 1. Set form data and tags (same logic as edit)
+    setFormData({
+      title: testCase.title || "",
+      description: testCase.description || "",
+      preconditions: testCase.preconditions || "",
+      owner: testCase.owner?.display_name || "OWNER1",
+      state: testCase.state || "ACTIVE",
+      priority: testCase.priority || "LOW",
+      type: testCase.type || "FUNCTIONAL",
+      automation_status: testCase.automation_status || "NOT_AUTOMATED",
+    });
+    const selectedTestCaseTagIds = (testCase.tags || []).map((t) => t.tag.id);
+    setSelectedTags(selectedTestCaseTagIds);
+    try {
+      // 2. Fetch steps data
+      const res = await get(
+        `/api/projects/${testCase.project_id}/test-cases?folder_id=${testCase.folder_id}&page=1&page_size=20`
+      );
+      const json = await res.json();
+      const selectedTestCase = json?.data?.find(
+        (item) => item.id === testCase.id
+      );
+      const stepsData = selectedTestCase?.steps_json
+        ? JSON.parse(selectedTestCase.steps_json)
+        : [];
+      setAddStep(
+        stepsData.length
+          ? stepsData.map((s, index) => ({
+              id: s.index || index + 1,
+              step: s.step || "",
+              expectedResult: s.expected || "",
+              actualResult: s.actual || "",
+            }))
+          : [{ id: 1, step: "", expectedResult: "", actualResult: "" }]
+      );
+    } catch (error) {
+      console.error("Error fetching test case details for view:", error);
+      setAddStep([{ id: 1, step: "", expectedResult: "", actualResult: "" }]);
+    } // 3. Set the mode and open modal
+    setEditingTestCaseId(null); // Ensure Edit mode is off
+    setIsViewMode(true); // ⭐ Enable View Mode
+    setOpenCreateTestCase(true);
+  };
+
   // Handle form submission
   const handleSave = async (e) => {
     e.preventDefault();
@@ -400,21 +453,41 @@ export const TestCase = () => {
   };
 
   // Delete test case
+  // const handleDeleteTestCase = async (testCaseId, testCaseProjectId) => {
+  //   console.log(testCaseId, testCaseProjectId);
+  //   // later I want to implement an modalpopup here
+  //   if (!window.confirm("Are you sure you want to delete this test case?"))
+  //     return;
+
+  //   try {
+  //     await del(`/api/test-cases/${testCaseId}`);
+  //     alert("Test case deleted successfully!");
+
+  //     // Refresh the test cases list
+  //     await fetchFolderTestCases(selectedFolder);
+  //   } catch (error) {
+  //     console.error("Delete failed:", error);
+  //     alert("Failed to delete test case.");
+  //   }
+  // };
   const handleDeleteTestCase = async (testCaseId, testCaseProjectId) => {
-    console.log(testCaseId, testCaseProjectId);
-    // later I want to implement an modalpopup here
-    if (!window.confirm("Are you sure you want to delete this test case?"))
-      return;
+    setTestCaseToDelete({ id: testCaseId, project_id: testCaseProjectId });
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!testCaseToDelete?.id) return;
+
+    setIsDeleteModalOpen(false);
 
     try {
-      await del(`/api/test-cases/${testCaseId}`);
+      await del(`/api/test-cases/${testCaseToDelete.id}`);
       alert("Test case deleted successfully!");
-
-      // Refresh the test cases list
       await fetchFolderTestCases(selectedFolder);
     } catch (error) {
-      console.error("Delete failed:", error);
       alert("Failed to delete test case.");
+    } finally {
+      setTestCaseToDelete(null);
     }
   };
 
@@ -1369,6 +1442,8 @@ export const TestCase = () => {
             handleSearch={handleSearch}
             filters={filters}
             handleFilterChange={handleFilterChange}
+            //test case view mode
+            handleViewTestCase={handleViewTestCase}
           />
         </div>
       </div>
@@ -1380,7 +1455,12 @@ export const TestCase = () => {
         height="700px"
         width="1200px"
         header={`${
-          editingTestCaseId ? "Edit Test Case: " : "Create Test Case: "
+          isViewMode
+            ? // test case view mode
+              `View Test Case: ${selectedFolder?.name}`
+            : editingTestCaseId
+            ? `Edit Test Case: ${selectedFolder?.name}`
+            : `Create Test Case: ${selectedFolder?.name}`
         } ${selectedFolder?.name}`}
         content={
           <CreateTestCase
@@ -1395,6 +1475,8 @@ export const TestCase = () => {
             tags={tags}
             selectedTags={selectedTags}
             handleSelectedTagsChange={handleSelectedTagsChange}
+            //test case view mode
+            isViewMode={isViewMode}
           />
         }
         buttons={
@@ -1402,9 +1484,11 @@ export const TestCase = () => {
             <CommonButton variant="outlined" onClick={onClose}>
               Cancel
             </CommonButton>
-            <CommonButton variant="contained" onClick={handleSave}>
-              Save
-            </CommonButton>
+            {!isViewMode && (
+              <CommonButton variant="contained" onClick={handleSave}>
+                Save
+              </CommonButton>
+            )}
           </div>
         }
       />
@@ -1530,6 +1614,45 @@ export const TestCase = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {isDeleteModalOpen && (
+        <Modalpopup
+          open={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setTestCaseToDelete(null);
+          }}
+          width="450px"
+          header="Confirm Deletion"
+          padding="16px"
+          content={
+            <div className="text-gray-700 text-base">
+              Are you absolutely sure you want to delete this test case? This
+              action cannot be undone.
+            </div>
+          }
+          buttons={
+            <div className="flex gap-2">
+              <CommonButton
+                variant="outlined"
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setTestCaseToDelete(null);
+                }}
+              >
+                Cancel
+              </CommonButton>
+              <CommonButton
+                variant="contained"
+                bgColor="red"
+                onClick={confirmDelete}
+              >
+                Delete
+              </CommonButton>
+            </div>
+          }
+        />
       )}
 
       {isCopyFolderModalOpen && (
